@@ -1,6 +1,6 @@
 <?php
 
-namespace Yish\Scaffold;
+namespace Rmedina\Scaffold;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Str;
