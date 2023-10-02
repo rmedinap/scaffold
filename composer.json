@@ -1,5 +1,5 @@
 {
-    "name": "rmedinap/scaffold",
+    "name": "rmedina/scaffold",
     "description": "A Scaffold generator.",
     "type": "library",
     "require": {
@@ -8,7 +8,7 @@
     "license": "MIT",
     "autoload": {
         "psr-4": {
-            "Rmedinap\\Scaffold\\": "src/"
+            "Rmedina\\Scaffold\\": "src/"
         }
     },
     "authors": [{
@@ -22,7 +22,7 @@
         },
         "laravel": {
             "providers": [
-                "Rmedinap\\Scaffold\\ScaffoldServiceProvider"
+                "Rmedina\\Scaffold\\ScaffoldServiceProvider"
             ]
         }
     }
