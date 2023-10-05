@@ -1,24 +1,29 @@
-@extends('backend.layouts.app')
+<x-app-layout>
+    <x-slot name="header">
+        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+            {{ __('DummyClass List') }}
+        </h2>
+    </x-slot>
 
-@section('content')
-    <div class="container">
-        <div class="jumbotron jumbotron-fluid">
-            <div class="container">
-                <h1 class="display-4">All DummyClass</h1>
-            </div>
+    <div class="py-12">
+        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+            <Link slideover href="{{ route('PluralSnakeClass.create') }}"
+                class="mb-5 inline-flex rounded-md shadow-sm bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 focus:outline-none focus:shadow-outline">
+            Add DummyClass
+            </Link>
+            <x-splade-table :for="$PluralSnakeClass">
+                <x-slot:empty-state>
+                    <p>Whoops!</p>
+                    </x-slot>
+                    <x-splade-cell actions as="$role">
+                        <Link slideover href="{{ route('PluralSnakeClass.edit', $role->id) }}" class="text-indigo-600"> Edit
+                        </Link>
+                        <x-splade-form action="{{ route('PluralSnakeClass.destroy', $role) }}" method="DELETE" confirm>
+                            <button class="text-bold text-indigo-600" type="submit">Delete</button>
+                        </x-splade-form>
+                    </x-splade-cell>
+
+            </x-splade-table>
         </div>
-
-        <div class="list-group">
-            @foreach($PluralSnakeClass as $SnakeClass)
-                <a href="{{ route('PluralSnakeClass.show', $SnakeClass->id) }}"
-                   class="list-group-item list-group-item-action flex-column align-items-start">
-                    <div class="d-flex w-100 justify-content-between">
-                        <h5 class="mb-1">{{ $SnakeClass->id }}</h5>
-                        <small>{{ $SnakeClass->created_at->diffForHumans() }}</small>
-                    </div>
-                </a>
-            @endforeach
-        </div>
-
     </div>
-@endsection
+</x-app-layout>

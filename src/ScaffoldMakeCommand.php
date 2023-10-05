@@ -43,6 +43,7 @@ class ScaffoldMakeCommand extends Command
     {
         $this->createRequest();
         $this->createModel();
+        $this->createTable();
 
         $dir = "database/migrations";
 
@@ -264,6 +265,13 @@ class ScaffoldMakeCommand extends Command
         ]);
     }
 
+    protected function createTable()
+    {
+        $this->call('make:table', [
+            'name' => Str::plural($this->argument('class'))
+        ]);
+    }
+
     protected function updateDummyNameController()
     {
         $name = Str::plural(Str::snake(class_basename($this->argument('class'))));
@@ -314,7 +322,7 @@ class ScaffoldMakeCommand extends Command
         $route_stub = str_replace("ControllerClass", "{$controller}Controller", $rstep3);
 
         file_put_contents(
-            base_path('routes/' . ($this->option('route') ?: 'web') . '.php'),
+            base_path('routes/' . ($this->option('route') ?: 'auth') . '.php'),
             $route_stub,
             FILE_APPEND
         );
@@ -379,19 +387,22 @@ class ScaffoldMakeCommand extends Command
                     $insertar = '            \''.$column[0].'\' => $this->faker->regexify(\'[A-Z0-9]{'.$column[2].'}\'),';
                 } else if ( in_array($column[0],["username","nombreusuario","nombre_usuario"]) ) {
                     $insertar = '            \''.$column[0].'\' => $this->faker->userName,';
-                } else if ( $column[2] != '' ) {
-                    if ($column[1] == 'string') {
-                        if (intval($column[1]) > 4) {
-                            $insertar = '            \''.$column[0].'\' => $this->faker->text($maxNbChars = '.$column[2].'),';
-                        } else {
-                            $insertar = '            \''.$column[0].'\' => $this->faker->regexify(\'[A-Z0-9]{'.$column[2].'}\'),';
+                } else if ( isset($column[2]) ) {
+                    if ( isset($column[1]) ) {
+                        if ($column[1] == 'string') {
+                            if (intval($column[1]) > 4) {
+                                $insertar = '            \''.$column[0].'\' => $this->faker->text($maxNbChars = '.$column[2].'),';
+                            } else {
+                                $insertar = '            \''.$column[0].'\' => $this->faker->regexify(\'[A-Z0-9]{'.$column[2].'}\'),';
+                            }
+                        } elseif ($column[1] == 'float'){
+                            $insertar = '            \''.$column[0].'\' => $this->faker->randomFloat(NULL, 1, '.$column[3].'),';
                         }
-                    } elseif ($column[1] == 'float'){
-                        $insertar = '            \''.$column[0].'\' => $this->faker->randomFloat(NULL, 1, '.$column[3].'),';
+                        else {
+                            $insertar = '            \''.$column[0].'\' => $this->faker->' . $basic_fake_value_array[$column[1]] .',';
+                        }
                     }
-                } else {
-                    $insertar = '            \''.$column[0].'\' => $this->faker->' . $basic_fake_value_array[$column[1]] .',';
-                }
+                } else $insertar='';
 
             $contenido=$split_content[0].'//'.PHP_EOL.$insertar.$split_content[1];
         }

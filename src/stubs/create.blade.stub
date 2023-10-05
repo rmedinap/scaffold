@@ -1,22 +1,17 @@
-@extends('backend.layouts.app')
+<x-splade-modal>
+    <h1 class="mb-2">Create new DummyClass</h1>
 
-@section('content')
-    <div class="container">
-        <div class="row justify-content-center">
-            <div class="col-md-8">
-                <div class="card">
-                    <div class="card-header">Create DummyClass</div>
+    <x-splade-form action="{{ route('PluralSnakeClass.store') }}">
+        <x-splade-input name="title" label="Title" class="mb-5" />
 
-                    <div class="card-body">
-                        <x-form :action="route('PluralSnakeClass.store')" >
-                            FormFields
-                            <x-form-submit>
-                                <span class="text-green-500">Grabar</span>
-                            </x-form-submit>
-                        </x-form>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-@endsection
+        <x-splade-select name="PluralSnakeClass[]" placeholder="Select DummyClass" multiple choices label="Select Permissions">
+            @foreach ($PluralSnakeClass as $SnakeClass)
+                <option value="{{ $SnakeClass->id }}">
+                    {{ $SnakeClass->title }}
+                </option>
+            @endforeach
+        </x-splade-select>
+
+        <x-splade-submit class="mt-5" :spinner="true" />
+    </x-splade-form>
+</x-splade-modal>
