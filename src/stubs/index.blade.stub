@@ -13,12 +13,12 @@
             </Link>
             <x-splade-table :for="$PluralSnakeClass">
                 <x-slot:empty-state>
-                    <p>Whoops!</p>
+                    <p>No hay datos!</p>
                     </x-slot>
-                    <x-splade-cell actions as="$role">
-                        <Link slideover href="{{ route('PluralSnakeClass.edit', $role->id) }}" class="text-indigo-600"> Edit
+                    <x-splade-cell actions as="$DummyLowerClass">
+                        <Link slideover href="{{ route('PluralSnakeClass.edit', $DummyLowerClass->id) }}" class="text-indigo-600"> Edit
                         </Link>
-                        <x-splade-form action="{{ route('PluralSnakeClass.destroy', $role) }}" method="DELETE" confirm>
+                        <x-splade-form action="{{ route('PluralSnakeClass.destroy', $DummyLowerClass) }}" method="DELETE" confirm>
                             <button class="text-bold text-indigo-600" type="submit">Delete</button>
                         </x-splade-form>
                     </x-splade-cell>

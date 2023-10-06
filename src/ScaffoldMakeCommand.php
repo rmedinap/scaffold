@@ -172,6 +172,10 @@ class ScaffoldMakeCommand extends Command
         $this->insertModelCode();
 
         $this->appendRouteFile();
+
+        $this->insertTableCode();
+
+        $this->insertRequestCode();
     }
 
     protected function makeViews($view)
@@ -184,7 +188,9 @@ class ScaffoldMakeCommand extends Command
         $html_show_fields = '';
 
         foreach ($array_fields as $field) {
-            $html_fields .= '                                <x-form-input name="' . $field . '" label="' . $field . '" />'.PHP_EOL;
+            if ($field != 'id') {
+                $html_fields .= '                                <x-splade-input name="' . $field . '" label="' . $field . '" type="text" class="mb-5" />'.PHP_EOL;
+            }
             $html_show_fields .= '                                    <p>{{ $'.Str::snake(class_basename($this->argument('class'))).'->' . $field . ' }} </p>'.PHP_EOL;
         }
 
@@ -197,6 +203,7 @@ class ScaffoldMakeCommand extends Command
         $cstep2 = str_replace("PluralSnakeClass", $name, $creating);
         $cstep3 = str_replace("SnakeClass", Str::snake(class_basename($this->argument('class'))), $cstep2);
         $cstep4 = str_replace("FormFields", $html_fields, $cstep3);
+        //$cstep4 = str_replace("FormEditFields", $html_edit_fields, $cstep3);
         $cstep5 = str_replace("ShowFields", $html_show_fields, $cstep4);
         $created = str_replace("DummyClass", $this->argument('class'), $cstep5);
 
@@ -469,6 +476,98 @@ class ScaffoldMakeCommand extends Command
         fwrite($f, $contenido);
     }
 
+
+
+    protected function insertTableCode()
+    {
+        $dir = "app/Tables";
+
+        $insertar = "";
+
+        $newest_model = $this->last_file($dir);
+
+        $ruta_model = $dir . '/' . $newest_model;
+
+        $f=fopen($ruta_model, 'r+');
+
+        $contenido = file_get_contents($ruta_model);
+
+        $split_content = explode("['id'", $contenido);
+
+        $array_fields = array_reverse($this->argument('fields'));
+
+        foreach ($array_fields as $field) {
+            $only_field = explode(":",$field);
+            $insertar .= '\''.$only_field[0].'\',';
+        }
+
+        $contenido=$split_content[0]."['id',".$insertar.$split_content[1];
+
+        $split_content = explode("->column('id', sortable: true);", $contenido);
+
+        $array_fields = array_reverse($this->argument('fields'));
+
+        $insertar = "";
+
+        foreach ($array_fields as $field) {
+            $only_field = explode(":",$field);
+            $insertar .= PHP_EOL.'            ->column(\''.$only_field[0].'\', sortable: true)';
+        }
+
+        $contenido=$split_content[0]."->column('id', sortable: true)".$insertar.";".$split_content[1];
+
+        fwrite($f, $contenido);
+    }
+
+    protected function insertRequestCode() {
+        $requestName = Str::studly(class_basename($this->argument('class')));
+
+        $dir = "app/Http/Requests";
+
+        $insertar = "";
+
+        $ruta_store_request = $dir . '/Store' . $requestName . 'Request.php';
+
+        $f=fopen($ruta_store_request, 'r+');
+
+        $contenido = file_get_contents($ruta_store_request);
+
+        $split_content = explode("//", $contenido);
+
+        $array_fields = array_reverse($this->argument('fields'));
+
+        foreach ($array_fields as $field) {
+            $only_field = explode(":",$field);
+            $insertar .= '            \''.$only_field[0].'\' => [\'required\', \'string\', \'max:255\'],'.PHP_EOL;
+        }
+
+        $contenido=$split_content[0].PHP_EOL.$insertar.$split_content[1];
+
+        fwrite($f, $contenido);
+
+        // echo $contenido;
+
+        $insertar = "";
+
+        $ruta_update_request = $dir . '/Update' . $requestName . 'Request.php';
+
+        $f=fopen($ruta_update_request, 'r+');
+
+        $contenido = file_get_contents($ruta_update_request);
+
+        $split_content = explode("//", $contenido);
+
+        $array_fields = array_reverse($this->argument('fields'));
+
+        foreach ($array_fields as $field) {
+            $only_field = explode(":",$field);
+            $insertar .= '            \''.$only_field[0].'\' => [\'required\', \'string\', \'max:255\'],'.PHP_EOL;
+        }
+
+        $contenido=$split_content[0].PHP_EOL.$insertar.$split_content[1];
+
+        fwrite($f, $contenido);
+    }
 
     protected function last_file(String $dir) {
         $latest = array(); $latest["time"] = 0;

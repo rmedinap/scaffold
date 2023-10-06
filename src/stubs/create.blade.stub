@@ -2,16 +2,7 @@
     <h1 class="mb-2">Create new DummyClass</h1>
 
     <x-splade-form action="{{ route('PluralSnakeClass.store') }}">
-        <x-splade-input name="title" label="Title" class="mb-5" />
-
-        <x-splade-select name="PluralSnakeClass[]" placeholder="Select DummyClass" multiple choices label="Select Permissions">
-            @foreach ($PluralSnakeClass as $SnakeClass)
-                <option value="{{ $SnakeClass->id }}">
-                    {{ $SnakeClass->title }}
-                </option>
-            @endforeach
-        </x-splade-select>
-
+FormFields
         <x-splade-submit class="mt-5" :spinner="true" />
     </x-splade-form>
 </x-splade-modal>
