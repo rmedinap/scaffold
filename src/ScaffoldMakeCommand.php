@@ -205,7 +205,8 @@ class ScaffoldMakeCommand extends Command
         $cstep4 = str_replace("FormFields", $html_fields, $cstep3);
         //$cstep4 = str_replace("FormEditFields", $html_edit_fields, $cstep3);
         $cstep5 = str_replace("ShowFields", $html_show_fields, $cstep4);
-        $created = str_replace("DummyClass", $this->argument('class'), $cstep5);
+        $cstep6 = str_replace("DummyLowerClass", Str::lower($this->argument('class')), $cstep5);
+        $created = str_replace("DummyClass", $this->argument('class'), $cstep6);
 
         file_put_contents(base_path('resources/views/' . $name . '/' . $view . '.blade.php'), $created);
     }

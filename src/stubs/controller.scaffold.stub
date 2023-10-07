@@ -14,8 +14,6 @@ class DummyClassController extends Controller
     {
         //$this->authorize('DummyProp_access');
 
-        $DummyLowerClass = DummyClass::all();
-
         return view('DummyLowerClass.index', [
             'DummyLowerClass' => DummyClasss::class,
         ]);
