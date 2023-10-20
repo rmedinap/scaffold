@@ -485,13 +485,13 @@ class ScaffoldMakeCommand extends Command
 
         $insertar = "";
 
-        $newest_model = $this->last_file($dir);
+        $newest_table = $this->last_file($dir);
 
-        $ruta_model = $dir . '/' . $newest_model;
+        $ruta_table = $dir . '/' . $newest_table;
 
-        $f=fopen($ruta_model, 'r+');
+        $f=fopen($ruta_table, 'r+');
 
-        $contenido = file_get_contents($ruta_model);
+        $contenido = file_get_contents($ruta_table);
 
         $split_content = explode("['id'", $contenido);
 
@@ -515,7 +515,7 @@ class ScaffoldMakeCommand extends Command
             $insertar .= PHP_EOL.'            ->column(\''.$only_field[0].'\', sortable: true)';
         }
 
-        $contenido=$split_content[0]."->column('id', sortable: true)".$insertar.";".$split_content[1];
+        $contenido=$split_content[0]."->column('id', sortable: true)".$insertar.PHP_EOL."            ->column(label: 'Actions', exportAs: false);".$split_content[1];
 
         fwrite($f, $contenido);
     }
