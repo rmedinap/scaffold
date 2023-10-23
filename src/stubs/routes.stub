@@ -3,7 +3,7 @@ Route::resource('PluralSnakeClass', 'App\Http\Controllers\ControllerClass');
 
 /*
 Route::get('PluralSnakeClass', 'App\Http\Controllers\ControllerClass@index')->name('PluralSnakeClass.index');
-Route::post('PluralSnakeClass', 'App\Http\Controllers\ControllerClass@create')->name('PluralSnakeClass.store');
+Route::post('PluralSnakeClass', 'App\Http\Controllers\ControllerClass@store')->name('PluralSnakeClass.store');
 Route::get('PluralSnakeClass/create', 'App\Http\Controllers\ControllerClass@create')->name('PluralSnakeClass.create');
 Route::get('PluralSnakeClass/{DummyLowerClass}', 'App\Http\Controllers\ControllerClass@show')->name('PluralSnakeClass.show');
 Route::put('PluralSnakeClass/{DummyLowerClass}', 'App\Http\Controllers\ControllerClass@update')->name('PluralSnakeClass.update');

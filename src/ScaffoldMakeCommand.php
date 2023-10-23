@@ -330,7 +330,7 @@ class ScaffoldMakeCommand extends Command
         $route_stub = str_replace("ControllerClass", "{$controller}Controller", $rstep3);
 
         file_put_contents(
-            base_path('routes/' . ($this->option('route') ?: 'auth') . '.php'),
+            base_path('routes/' . ($this->option('route') ?: 'splade') . '.php'),
             $route_stub,
             FILE_APPEND
         );
