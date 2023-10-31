@@ -594,7 +594,7 @@ class ScaffoldMakeCommand extends Command
 
     function setPermissions() {
         $usuario_admin=User::find(1);
-        $clase = Str::lower($this->argument('class'));
+        $clase = Str::snake(class_basename($this->argument('class')));
         $permisos = ["_access", "_show", "_create", "_edit", "_delete"];
         foreach ($permisos as $permiso) {
             $title = $clase.$permiso;
