@@ -7,6 +7,9 @@ use Illuminate\Support\Str;
 use PhpParser\Node\Stmt\Switch_;
 use Schema;
 use Symfony\Component\Console\Input\InputInterface;
+use App\Models\User;
+use App\Models\Permission;
+use App\Models\Role;
 
 class ScaffoldMakeCommand extends Command
 {
@@ -176,6 +179,9 @@ class ScaffoldMakeCommand extends Command
         $this->insertTableCode();
 
         $this->insertRequestCode();
+
+        $this->ask('Desea crear los permisos para '.Str::lower($this->argument('class')).' (Enter para continuar): ');
+        $this->setPermissions();
     }
 
     protected function makeViews($view)
@@ -544,6 +550,14 @@ class ScaffoldMakeCommand extends Command
 
         $contenido=$split_content[0].PHP_EOL.$insertar.$split_content[1];
 
+        $split_content = explode("use Illuminate\Foundation\Http\FormRequest;", $contenido);
+        $insertar = "use Illuminate\Foundation\Http\FormRequest;".PHP_EOL."use Illuminate\Support\Facades\Gate;";
+        $contenido=$split_content[0].$insertar.PHP_EOL.$split_content[1];
+
+        $split_content = explode("return false;", $contenido);
+        $insertar = "return Gate::allows('".Str::lower($this->argument('class'))."_create');";
+        $contenido=$split_content[0].$insertar.PHP_EOL.$split_content[1];
+
         fwrite($f, $contenido);
 
         // echo $contenido;
@@ -567,7 +581,31 @@ class ScaffoldMakeCommand extends Command
 
         $contenido=$split_content[0].PHP_EOL.$insertar.$split_content[1];
 
+        $split_content = explode("use Illuminate\Foundation\Http\FormRequest;", $contenido);
+        $insertar = "use Illuminate\Foundation\Http\FormRequest;".PHP_EOL."use Illuminate\Support\Facades\Gate;";
+        $contenido=$split_content[0].$insertar.PHP_EOL.$split_content[1];
+
+        $split_content = explode("return false;", $contenido);
+        $insertar = "return Gate::allows('".Str::lower($this->argument('class'))."_create');";
+        $contenido=$split_content[0].$insertar.PHP_EOL.$split_content[1];
+
         fwrite($f, $contenido);
+    }
+
+    function setPermissions() {
+        $usuario_admin=User::find(1);
+        $clase = Str::lower($this->argument('class'));
+        $permisos = ["_access", "_show", "_create", "_edit", "_delete"];
+        foreach ($permisos as $permiso) {
+            $title = $clase.$permiso;
+            Permission::create([
+                'title' => $title
+            ]);
+        }
+        //Admin puede tener todos los permisos
+        $admin_permissions = Permission::all();
+        Role::findOrFail(1)->permissions()->sync($admin_permissions);
+
     }
 
     protected function last_file(String $dir) {
