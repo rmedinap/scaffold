@@ -182,8 +182,9 @@ class ScaffoldMakeCommand extends Command
 
         $this->insertInMenu();
 
-        $this->ask('Desea crear los permisos para '.Str::lower($this->argument('class')).' (Enter para continuar): ');
-        $this->setPermissions();
+        $respuesta= $this->ask('Desea crear los permisos para '.Str::lower($this->argument('class')).' (Enter para continuar): ');
+
+        if ($respuesta=='' || $respuesta=='S' || $respuesta=='s' || $respuesta=='SI' || $respuesta=='si') $this->setPermissions(); else echo("No se crearon Permisos");
     }
 
     protected function makeViews($view)
@@ -550,7 +551,15 @@ class ScaffoldMakeCommand extends Command
 
         foreach ($array_fields as $field) {
             $only_field = explode(":",$field);
-            $insertar .= '            \''.$only_field[0].'\' => [\'required\', \'string\', \'max:255\'],'.PHP_EOL;
+            $numerico = ["bigInteger","bigSerial","serial","float4","float8","int","int2","int4","int8","integer","decimal"];
+            $tipo_dato = isset($only_field[1])?(in_array($only_field[1],$numerico)?"integer":"string"):"string";
+            $longitud_dato = isset($only_field[2])?$only_field[2]:"255";
+            if ($tipo_dato=="string") {
+                $insertar .= '            \''.$only_field[0].'\' => [\'required\', \''.$tipo_dato.'\', \'max:'.$longitud_dato.'\'],'.PHP_EOL;
+            } else {
+                $insertar .= '            \''.$only_field[0].'\' => [\'required\', \''.$tipo_dato.'\'],'.PHP_EOL;
+            }
+
         }
 
         $contenido=$split_content[0].PHP_EOL.$insertar.$split_content[1];
@@ -581,7 +590,14 @@ class ScaffoldMakeCommand extends Command
 
         foreach ($array_fields as $field) {
             $only_field = explode(":",$field);
-            $insertar .= '            \''.$only_field[0].'\' => [\'required\', \'string\', \'max:255\'],'.PHP_EOL;
+            $numerico = ["bigInteger","bigSerial","serial","float4","float8","int","int2","int4","int8","integer","decimal"];
+            $tipo_dato = isset($only_field[1])?(in_array($only_field[1],$numerico)?"integer":"string"):"string";
+            $longitud_dato = isset($only_field[2])?$only_field[2]:"255";
+            if ($tipo_dato=="string") {
+                $insertar .= '            \''.$only_field[0].'\' => [\'required\', \''.$tipo_dato.'\', \'max:'.$longitud_dato.'\'],'.PHP_EOL;
+            } else {
+                $insertar .= '            \''.$only_field[0].'\' => [\'required\', \''.$tipo_dato.'\'],'.PHP_EOL;
+            }
         }
 
         $contenido=$split_content[0].PHP_EOL.$insertar.$split_content[1];
