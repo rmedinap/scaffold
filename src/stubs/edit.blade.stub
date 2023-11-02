@@ -1,8 +1,8 @@
 <x-splade-modal>
-    <h1 class="mb-2">Edit DummyClass ({{ $SnakeClass->name }})</h1>
+    <h1 class="mb-2">{{ __('Edit') }} DummyTitleClass ({{ $SnakeClass->title }})</h1>
 
     <x-splade-form action="{{ route('PluralSnakeClass.update', $SnakeClass) }}" :default="$SnakeClass" method="PUT">
         FormFields
-        <x-splade-submit class="mt-5" />
+        <x-splade-submit :label="__('Save')" class="mt-5" />
     </x-splade-form>
 </x-splade-modal>

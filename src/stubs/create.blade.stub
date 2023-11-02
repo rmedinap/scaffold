@@ -1,8 +1,8 @@
 <x-splade-modal>
-    <h1 class="mb-2">Create new DummyClass</h1>
+    <h1 class="mb-2">{{ __('New') }}  DummyTitleClass</h1>
 
     <x-splade-form action="{{ route('PluralSnakeClass.store') }}">
 FormFields
-        <x-splade-submit class="mt-5" :spinner="true" />
+        <x-splade-submit :label="__('Save')"  class="mt-5" :spinner="true" />
     </x-splade-form>
 </x-splade-modal>

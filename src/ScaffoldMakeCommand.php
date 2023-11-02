@@ -180,6 +180,8 @@ class ScaffoldMakeCommand extends Command
 
         $this->insertRequestCode();
 
+        $this->insertInMenu();
+
         $this->ask('Desea crear los permisos para '.Str::lower($this->argument('class')).' (Enter para continuar): ');
         $this->setPermissions();
     }
@@ -206,13 +208,16 @@ class ScaffoldMakeCommand extends Command
 
         touch(base_path('resources/views/' . $name . '/' . $view . '.blade.php'));
 
+        $titulo = preg_replace('/([a-z])([A-Z])/s','$1 $2', $this->argument('class'));
+
         $cstep2 = str_replace("PluralSnakeClass", $name, $creating);
         $cstep3 = str_replace("SnakeClass", Str::snake(class_basename($this->argument('class'))), $cstep2);
         $cstep4 = str_replace("FormFields", $html_fields, $cstep3);
         //$cstep4 = str_replace("FormEditFields", $html_edit_fields, $cstep3);
         $cstep5 = str_replace("ShowFields", $html_show_fields, $cstep4);
-        $cstep6 = str_replace("DummyLowerClass", Str::lower($this->argument('class')), $cstep5);
-        $created = str_replace("DummyClass", $this->argument('class'), $cstep6);
+        $cstep6 = str_replace("DummyTitleClass", $titulo, $cstep5);
+        $cstep7 = str_replace("DummyLowerClass", Str::lower($this->argument('class')), $cstep6);
+        $created = str_replace("DummyClass", $this->argument('class'), $cstep7);
 
         file_put_contents(base_path('resources/views/' . $name . '/' . $view . '.blade.php'), $created);
     }
@@ -607,6 +612,36 @@ class ScaffoldMakeCommand extends Command
         Role::findOrFail(1)->permissions()->sync($admin_permissions);
 
     }
+
+    function insertInMenu() {
+        $ruta_menu = "resources/views/layouts/navigation.blade.php";
+
+        $ruta = Str::snake($this->argument('class'));
+        $clase = Str::plural($ruta);
+        $titulo = preg_replace('/([a-z])([A-Z])/s','$1 $2', $this->argument('class'));
+
+        $f=fopen($ruta_menu, 'r+');
+
+        $contenido = file_get_contents($ruta_menu);
+
+        $last_endcan = strrpos($contenido,"@endcan");
+
+        $beg = substr($contenido,0,$last_endcan+7);
+        $end = substr($contenido,$last_endcan+7,strlen($contenido)-$last_endcan);
+
+        $insertar = "
+                        @can('".$ruta."_access')
+                            <x-nav-link :href=\"route('".$clase.".index')\" :active=\"request()->routeIs('".$clase.".index')\">
+                                {{ __('".$titulo."') }}
+                            </x-nav-link>
+                        @endcan";
+
+        $contenido=$beg.$insertar.$end;
+
+        fwrite($f, $contenido);
+    }
+
+    // Funciones protegidas
 
     protected function last_file(String $dir) {
         $latest = array(); $latest["time"] = 0;
