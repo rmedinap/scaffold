@@ -638,6 +638,20 @@ class ScaffoldMakeCommand extends Command
 
         $contenido=$beg.$insertar.$end;
 
+        $first_responsive_nav = strpos($contenido,"</x-responsive-nav-link>");
+
+        $beg = substr($contenido,0,$first_responsive_nav+24);
+        $end = substr($contenido,$first_responsive_nav+24,strlen($contenido)-$first_responsive_nav);
+
+        $insertar = "
+                @can('".$ruta."_access')
+                    <x-responsive-nav-link :href=\"route('".$clase.".index')\" :active=\"request()->routeIs('".$clase.".index')\">
+                        {{ __('".$titulo."') }}
+                    </x-responsive-nav-link>
+                @endcan";
+
+        $contenido=$beg.$insertar.$end;
+
         fwrite($f, $contenido);
     }
 
