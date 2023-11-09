@@ -168,7 +168,13 @@ class ScaffoldMakeCommand extends Command
 
         $this->updateDummyNameController();
 
-        $this->createViews();
+        $modal = ["1" => "modal", "2" => "slideover"];
+
+        $opcion = $this->ask('Elegir Modal(1) [Default] o Slideover (2): ');
+
+        // echo (isset($modal[$opcion])?$modal[$opcion]:"modal");
+
+        $this->createViews(isset($modal[$opcion])?$modal[$opcion]:"modal");
 
         $this->insertFactories();
 
@@ -176,7 +182,9 @@ class ScaffoldMakeCommand extends Command
 
         $this->appendRouteFile();
 
-        $this->insertTableCode();
+        $paginacion = $this->ask('Elegir paginacion (25 por defecto): ');
+
+        $this->insertTableCode(isset($paginacion) ? $paginacion : "25");
 
         $this->insertRequestCode();
 
@@ -187,7 +195,7 @@ class ScaffoldMakeCommand extends Command
         if ($respuesta=='' || $respuesta=='S' || $respuesta=='s' || $respuesta=='SI' || $respuesta=='si') $this->setPermissions(); else echo("No se crearon Permisos");
     }
 
-    protected function makeViews($view)
+    protected function makeViews($view, $modal)
     {
         $name = Str::plural(Str::snake(class_basename($this->argument('class'))));
 
@@ -218,7 +226,9 @@ class ScaffoldMakeCommand extends Command
         $cstep5 = str_replace("ShowFields", $html_show_fields, $cstep4);
         $cstep6 = str_replace("DummyTitleClass", $titulo, $cstep5);
         $cstep7 = str_replace("DummyLowerClass", Str::lower($this->argument('class')), $cstep6);
-        $created = str_replace("DummyClass", $this->argument('class'), $cstep7);
+
+        $cstep8 = str_replace("slideover", $modal, $cstep7);
+        $created = str_replace("DummyClass", $this->argument('class'), $cstep8);
 
         file_put_contents(base_path('resources/views/' . $name . '/' . $view . '.blade.php'), $created);
     }
@@ -322,12 +332,12 @@ class ScaffoldMakeCommand extends Command
         file_put_contents(base_path($this->config['path']['controller'] . '/' . "{$controller}Controller.php"), $step5);
     }
 
-    protected function createViews()
+    protected function createViews($modal="slideover")
     {
-        $this->makeViews('create');
-        $this->makeViews('show');
-        $this->makeViews('edit');
-        $this->makeViews('index');
+        $this->makeViews('create',$modal);
+        $this->makeViews('show',$modal);
+        $this->makeViews('edit',$modal);
+        $this->makeViews('index',$modal);
     }
 
     protected function appendRouteFile()
@@ -454,12 +464,15 @@ class ScaffoldMakeCommand extends Command
         $belongs_to_many = preg_grep('/^belongsToMany:.*/', $array_fields);
 
         $array_fields = array_diff($array_fields, $has_many);
-        $array_fields = array_diff($array_fields, $belongs_to);
+        // $array_fields = array_diff($array_fields, $belongs_to);
         $array_fields = array_diff($array_fields, $belongs_to_many);
 
         foreach ($array_fields as $field) {
             $only_field = explode(":",$field);
             $insertar .= '"'.$only_field[0].'",';
+            if (isset($only_field[1]) && isset($only_field[2]) && $only_field[0] == "belongsTo") {
+                $insertar = '"'.$only_field[2].'",';
+            }
         }
 
         $insertar = '    protected $fillable = ['.rtrim($insertar,",").'];';
@@ -491,7 +504,7 @@ class ScaffoldMakeCommand extends Command
 
 
 
-    protected function insertTableCode()
+    protected function insertTableCode($paginacion = "25")
     {
         $dir = "app/Tables";
 
@@ -511,7 +524,13 @@ class ScaffoldMakeCommand extends Command
 
         foreach ($array_fields as $field) {
             $only_field = explode(":",$field);
-            $insertar .= '\''.$only_field[0].'\',';
+            $campo_externo = (isset($only_field[1]) && isset($only_field[2]) && isset($only_field[3])) ? $only_field[3] : "id";
+
+            if (isset($only_field[1]) && isset($only_field[2]) && $only_field[0] == "belongsTo") {
+                $insertar = '"'.Str::plural(Str::snake(class_basename($only_field[1]))).'.'.$campo_externo.'",';
+            } else {
+                $insertar .= '\''.$only_field[0].'\',';
+            }
         }
 
         $contenido=$split_content[0]."['id',".$insertar.$split_content[1];
@@ -524,10 +543,16 @@ class ScaffoldMakeCommand extends Command
 
         foreach ($array_fields as $field) {
             $only_field = explode(":",$field);
-            $insertar .= PHP_EOL.'            ->column(\''.$only_field[0].'\', sortable: true)';
+            $campo_externo = (isset($only_field[1]) && isset($only_field[2]) && isset($only_field[3])) ? $only_field[3] : "id";
+
+            if (isset($only_field[1]) && isset($only_field[2]) && $only_field[0] == "belongsTo") {
+                $insertar .= PHP_EOL.'            ->column(\''.Str::plural(Str::snake(class_basename($only_field[1]))).'.'.$campo_externo.'\', sortable: true)';
+            } else {
+                $insertar .= PHP_EOL.'            ->column(\''.$only_field[0].'\', sortable: true)';
+            }
         }
 
-        $contenido=$split_content[0]."->column('id', sortable: true)".$insertar.PHP_EOL."            ->column(label: 'Actions', exportAs: false);".$split_content[1];
+        $contenido=$split_content[0]."->column('id', sortable: true)".$insertar.PHP_EOL."            ->column(label: 'Actions', exportAs: false)".PHP_EOL."            ->paginate(".$paginacion.");".$split_content[1];
 
         fwrite($f, $contenido);
     }
@@ -554,10 +579,14 @@ class ScaffoldMakeCommand extends Command
             $numerico = ["bigInteger","bigSerial","serial","float4","float8","int","int2","int4","int8","integer","decimal"];
             $tipo_dato = isset($only_field[1])?(in_array($only_field[1],$numerico)?"integer":"string"):"string";
             $longitud_dato = isset($only_field[2])?$only_field[2]:"255";
-            if ($tipo_dato=="string") {
-                $insertar .= '            \''.$only_field[0].'\' => [\'required\', \''.$tipo_dato.'\', \'max:'.$longitud_dato.'\'],'.PHP_EOL;
+            if ($only_field[0] != "belongsTo") {
+                if ($tipo_dato=="string") {
+                    $insertar .= '            \''.$only_field[0].'\' => [\'required\', \''.$tipo_dato.'\', \'max:'.$longitud_dato.'\'],'.PHP_EOL;
+                } else {
+                    $insertar .= '            \''.$only_field[0].'\' => [\'required\', \''.$tipo_dato.'\'],'.PHP_EOL;
+                }
             } else {
-                $insertar .= '            \''.$only_field[0].'\' => [\'required\', \''.$tipo_dato.'\'],'.PHP_EOL;
+                $insertar .= '            \''.$only_field[2].'\' => [\'required\'],'.PHP_EOL;
             }
 
         }
@@ -593,10 +622,14 @@ class ScaffoldMakeCommand extends Command
             $numerico = ["bigInteger","bigSerial","serial","float4","float8","int","int2","int4","int8","integer","decimal"];
             $tipo_dato = isset($only_field[1])?(in_array($only_field[1],$numerico)?"integer":"string"):"string";
             $longitud_dato = isset($only_field[2])?$only_field[2]:"255";
-            if ($tipo_dato=="string") {
-                $insertar .= '            \''.$only_field[0].'\' => [\'required\', \''.$tipo_dato.'\', \'max:'.$longitud_dato.'\'],'.PHP_EOL;
+            if ($only_field[0] != "belongsTo") {
+                if ($tipo_dato=="string") {
+                    $insertar .= '            \''.$only_field[0].'\' => [\'required\', \''.$tipo_dato.'\', \'max:'.$longitud_dato.'\'],'.PHP_EOL;
+                } else {
+                    $insertar .= '            \''.$only_field[0].'\' => [\'required\', \''.$tipo_dato.'\'],'.PHP_EOL;
+                }
             } else {
-                $insertar .= '            \''.$only_field[0].'\' => [\'required\', \''.$tipo_dato.'\'],'.PHP_EOL;
+                $insertar .= '            \''.$only_field[2].'\' => [\'required\'],'.PHP_EOL;
             }
         }
 

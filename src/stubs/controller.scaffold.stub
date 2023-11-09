@@ -12,7 +12,7 @@ class DummyClassController extends Controller
 {
     public function index()
     {
-        $this->authorize('DummyProp_access');
+        //$this->authorize('DummyProp_access');
 
         return view('DummyLowerClass.index', [
             'DummyLowerClass' => DummyClasss::class,
@@ -21,14 +21,14 @@ class DummyClassController extends Controller
 
     public function create()
     {
-        $this->authorize('DummyProp_create');
+        //$this->authorize('DummyProp_create');
 
         return view('DummyLowerClass.create');
     }
 
     public function store(StoreDummyClassRequest $request)
     {
-        $this->authorize('DummyProp_create');
+        //$this->authorize('DummyProp_create');
 
         $DummyProp = DummyClass::create([
 CreateDataFields
@@ -39,14 +39,14 @@ CreateDataFields
 
     public function edit(DummyClass $DummyProp)
     {
-        $this->authorize('DummyProp_edit');
+        //$this->authorize('DummyProp_edit');
 
         return view('DummyLowerClass.edit', compact('DummyProp'));
     }
 
     public function update(UpdateDummyClassRequest $request, DummyClass $DummyProp)
     {
-        $this->authorize('DummyProp_edit');
+        //$this->authorize('DummyProp_edit');
 
         $DummyProp->update($request->validated());
 
@@ -55,14 +55,12 @@ CreateDataFields
 
     public function show(DummyClass $DummyProp)
     {
-        $this->authorize('DummyProp_show');
-
         return view('DummyLowerClass.show', compact('DummyProp'));
     }
 
     public function destroy(DummyClass $DummyProp)
     {
-        $this->authorize('DummyProp_delete');
+        //$this->authorize('DummyProp_delete');
 
         $DummyProp->delete();
 
