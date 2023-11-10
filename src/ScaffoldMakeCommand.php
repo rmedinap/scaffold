@@ -458,6 +458,7 @@ class ScaffoldMakeCommand extends Command
         $split_content = explode('}', $contenido);
 
         $array_fields = array_reverse($this->argument('fields'));
+        $array_fields_not_reversed = $this->argument('fields');
 
         $has_many = preg_grep('/^hasMany:.*/', $array_fields);
         $belongs_to = preg_grep('/^belongsTo:.*/', $array_fields);
@@ -469,9 +470,10 @@ class ScaffoldMakeCommand extends Command
 
         foreach ($array_fields as $field) {
             $only_field = explode(":",$field);
-            $insertar .= '"'.$only_field[0].'",';
             if (isset($only_field[1]) && isset($only_field[2]) && $only_field[0] == "belongsTo") {
-                $insertar = '"'.$only_field[2].'",';
+                $insertar .= '"'.$only_field[2].'",';
+            } else {
+                $insertar .= '"'.$only_field[0].'",';
             }
         }
 
@@ -498,6 +500,24 @@ class ScaffoldMakeCommand extends Command
         }
 
         $contenido=$split_content[0].$insertar.PHP_EOL."}";
+
+        $split_content = explode('class ', $contenido);
+
+        $insertar = '/**
+* Class '.$this->argument('class').'
+*
+* @package '.$dir.PHP_EOL;
+
+        foreach ($array_fields_not_reversed as $field) {
+            $only_field = explode(":",$field);
+            if (isset($only_field[1]) && isset($only_field[2]) && $only_field[0] == "belongsTo") {
+                $insertar .= '* @property int '.$only_field[2].' A foreign key to an '.$only_field[1].PHP_EOL;
+            } else {
+                $insertar .= '* @property '.(isset($only_field[1])?$only_field[1]:"string").' '.$only_field[0].PHP_EOL;
+            }
+        }
+
+        $contenido=$split_content[0].$insertar."*/".PHP_EOL."class ".$split_content[1];
 
         fwrite($f, $contenido);
     }
@@ -527,7 +547,7 @@ class ScaffoldMakeCommand extends Command
             $campo_externo = (isset($only_field[1]) && isset($only_field[2]) && isset($only_field[3])) ? $only_field[3] : "id";
 
             if (isset($only_field[1]) && isset($only_field[2]) && $only_field[0] == "belongsTo") {
-                $insertar = '"'.Str::plural(Str::snake(class_basename($only_field[1]))).'.'.$campo_externo.'",';
+                $insertar .= '"'.Str::plural(Str::snake(class_basename($only_field[1]))).'.'.$campo_externo.'",';
             } else {
                 $insertar .= '\''.$only_field[0].'\',';
             }
