@@ -162,9 +162,13 @@ class ScaffoldMakeCommand extends Command
 
         fwrite($f, $contenido);
 
-        $this->ask('Revisar migration (Enter para continuar): '.$ruta_migracion);
+        $migrar = $this->ask('Desea ejecutar la migration '.$ruta_migracion.' ([S,N]): ');
 
-        exec('php artisan migrate');
+        if ($migrar=='' || $migrar=='S' || $migrar=='Si' || $migrar=='SI') {
+            exec('php artisan migrate');
+        } else {
+            print "No se realizo la migracion.";
+        }
 
         $this->updateDummyNameController();
 
@@ -321,15 +325,16 @@ class ScaffoldMakeCommand extends Command
 
         // replace dummy name.
         $step1 = str_replace("DummyProp", Str::snake(class_basename($this->argument('class'))), $source);
-        $step2 = str_replace("DummyLowerClass", $name, $step1);
-        $step3 = str_replace("DummyClass", $this->argument('class'), $step2);
-        $step4 = str_replace("ValidateDataFields", $validate_data_fields, $step3);
-        $step5 = str_replace("CreateDataFields", $create_data_fields, $step4);
+        $step2 = str_replace("DummyAuthClass", Str::lower($this->argument('class')), $step1);
+        $step3 = str_replace("DummyLowerClass", $name, $step2);
+        $step4 = str_replace("DummyClass", $this->argument('class'), $step3);
+        $step5 = str_replace("ValidateDataFields", $validate_data_fields, $step4);
+        $step6 = str_replace("CreateDataFields", $create_data_fields, $step5);
 
 
         // put in controller
         $controller = Str::studly(class_basename($this->argument('class')));
-        file_put_contents(base_path($this->config['path']['controller'] . '/' . "{$controller}Controller.php"), $step5);
+        file_put_contents(base_path($this->config['path']['controller'] . '/' . "{$controller}Controller.php"), $step6);
     }
 
     protected function createViews($modal="slideover")
@@ -688,39 +693,36 @@ class ScaffoldMakeCommand extends Command
 
         $ruta = Str::snake($this->argument('class'));
         $clase = Str::plural($ruta);
+        $can = Str::lower($this->argument('class'));
         $titulo = preg_replace('/([a-z])([A-Z])/s','$1 $2', $this->argument('class'));
 
         $f=fopen($ruta_menu, 'r+');
 
         $contenido = file_get_contents($ruta_menu);
 
-        $last_endcan = strrpos($contenido,"@endcan");
-
-        $beg = substr($contenido,0,$last_endcan+7);
-        $end = substr($contenido,$last_endcan+7,strlen($contenido)-$last_endcan);
+        $split_content = explode("<!-- Last Link -->", $contenido);
 
         $insertar = "
-                        @can('".$ruta."_access')
+                        @can('".$can."_access')
                             <x-nav-link :href=\"route('".$clase.".index')\" :active=\"request()->routeIs('".$clase.".index')\">
                                 {{ __('".$titulo."') }}
                             </x-nav-link>
-                        @endcan";
+                        @endcan
+                        <!-- Last Link -->";
 
-        $contenido=$beg.$insertar.$end;
+        $contenido=$split_content[0].$insertar.$split_content[1];
 
-        $first_responsive_nav = strpos($contenido,"</x-responsive-nav-link>");
-
-        $beg = substr($contenido,0,$first_responsive_nav+24);
-        $end = substr($contenido,$first_responsive_nav+24,strlen($contenido)-$first_responsive_nav);
+        $split_content = explode("<!-- Last Responsive Link -->", $contenido);
 
         $insertar = "
-                @can('".$ruta."_access')
+                @can('".$can."_access')
                     <x-responsive-nav-link :href=\"route('".$clase.".index')\" :active=\"request()->routeIs('".$clase.".index')\">
                         {{ __('".$titulo."') }}
                     </x-responsive-nav-link>
-                @endcan";
+                @endcan
+                <!-- Last Responsive Link -->";
 
-        $contenido=$beg.$insertar.$end;
+        $contenido=$split_content[0].$insertar.$split_content[1];
 
         fwrite($f, $contenido);
     }

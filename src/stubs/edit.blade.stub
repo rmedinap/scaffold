@@ -2,7 +2,6 @@
     <h1 class="mb-2">Edit DummyClass ({{ $SnakeClass->name }})</h1>
 
     <x-splade-form action="{{ route('PluralSnakeClass.update', $SnakeClass) }}" :default="$SnakeClass" method="PUT">
-        <x-splade-input name="name" label="Name" class="mb-5" />
         FormFields
         <x-splade-submit class="mt-5" />
     </x-splade-form>
