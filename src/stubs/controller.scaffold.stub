@@ -48,7 +48,10 @@ CreateDataFields
     {
         $this->authorize('DummyAuthClass_edit');
 
-        $DummyProp->update($request->validated());
+        //$DummyProp->update($request->validated());
+        $DummyProp->update([
+CreateDataFields
+        ]);
 
         return redirect()->route('DummyLowerClass.show', $DummyProp->id)->with('success', 'DummyClass created successfully.');
     }
