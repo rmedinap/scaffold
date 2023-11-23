@@ -113,13 +113,30 @@ class ScaffoldMakeCommand extends Command
 
         $insertar = "            // Has Many".PHP_EOL;
         foreach ($has_many as $this_has_many) {
-            $split_content = explode('$table->timestamps();', $contenido);
-
             $has = explode(":",$this_has_many);
-            $insertar .= '            $table->integer(\''.$has[2].'\')->unsigned()->index()->nullable();'.PHP_EOL;
-            $insertar .= '            $table->foreign(\''.$has[2].'\')->references(\'id\')->on(\''.Str::plural(strtolower($has[1])).'\');  '.PHP_EOL;
+            exec("php artisan make:migration add_".Str::lower($this->argument('class'))."_id_to_".Str::lower($has[1])." --table=".Str::plural(Str::lower($has[1])));
 
-            $contenido=$split_content[0].'$table->timestamps();'.PHP_EOL.$insertar.$split_content[1];
+            $dir = "database/migrations";
+
+            $newest_migration_foreign = $this->last_file($dir);
+
+            $ruta_migracion_foreign = $dir . '/' . $newest_migration_foreign;
+
+            $g=fopen($ruta_migracion_foreign, 'r+');
+
+            $contenido_foreign = file_get_contents($ruta_migracion_foreign);
+
+            $insertar_foreign_up='$table->integer(\''.Str::lower($this->argument('class')).'_id\')->nullable()->unsigned()->after(\'id\');';
+            $insertar_foreign_up.=PHP_EOL.'            $table->foreign(\''.Str::lower($this->argument('class')).'_id\',\'fk_'.Str::lower($this->argument('class')).'_id\')->references(\'id\')->on(\''.Str::plural(Str::lower($this->argument('class'))).'\')->onUpdate(\'CASCADE\')->onDelete(\'CASCADE\');';
+
+            $insertar_foreign_down='$table->dropForeign(\'fk_'.Str::lower($this->argument('class')).'_id\');';
+            $insertar_foreign_down.=PHP_EOL.'            $table->dropColumn(\''.Str::lower($this->argument('class')).'_id\');';
+
+            $split_content = explode('//', $contenido_foreign);
+
+            $contenido_foreign=$split_content[0].$insertar_foreign_up.$split_content[1].$insertar_foreign_down.$split_content[2];
+
+            fwrite($g, $contenido_foreign);
         }
 
         $insertar = PHP_EOL."            // Belongs to".PHP_EOL;
@@ -403,7 +420,7 @@ class ScaffoldMakeCommand extends Command
             if ( in_array($column[0],["nombre","name"]) ) {
                     $insertar = '            \''.$column[0].'\' => $this->faker->name,';
                 } else if ( in_array($column[0],["denominacion","descripcion","texto","description"]) ) {
-                    $insertar = '            \''.$column[0].'\' => $this->faker->text($maxNbChars = '.$column[2].'),';
+                    $insertar = '            \''.$column[0].'\' => $this->faker->text($maxNbChars = '.(isset($column[2])?$column[2]:"255").'),';
                 } else if ( in_array($column[0],["email","mail","correo"]) ) {
                     $insertar = '            \''.$column[0].'\' => $this->faker->email,';
                 } else if ( in_array($column[0],["telefono","phone","celular"]) ) {
@@ -421,19 +438,19 @@ class ScaffoldMakeCommand extends Command
                 } else if ( in_array($column[0],["orden"]) ) {
                     $insertar = '            \''.$column[0].'\' => $this->faker->randomNumber(1, 100),';
                 } else if ( in_array($column[0],["codigo","code"]) ) {
-                    $insertar = '            \''.$column[0].'\' => $this->faker->regexify(\'[A-Z0-9]{'.$column[2].'}\'),';
+                    $insertar = '            \''.$column[0].'\' => $this->faker->regexify(\'[A-Z0-9]{'.(isset($column[2])?$column[2]:"255").'}\'),';
                 } else if ( in_array($column[0],["username","nombreusuario","nombre_usuario"]) ) {
                     $insertar = '            \''.$column[0].'\' => $this->faker->userName,';
                 } else if ( isset($column[2]) ) {
                     if ( isset($column[1]) ) {
                         if ($column[1] == 'string') {
                             if (intval($column[1]) > 4) {
-                                $insertar = '            \''.$column[0].'\' => $this->faker->text($maxNbChars = '.$column[2].'),';
+                                $insertar = '            \''.$column[0].'\' => $this->faker->text($maxNbChars = '.(isset($column[2])?$column[2]:"255").'),';
                             } else {
-                                $insertar = '            \''.$column[0].'\' => $this->faker->regexify(\'[A-Z0-9]{'.$column[2].'}\'),';
+                                $insertar = '            \''.$column[0].'\' => $this->faker->regexify(\'[A-Z0-9]{'.(isset($column[2])?$column[2]:"255").'}\'),';
                             }
                         } elseif ($column[1] == 'float'){
-                            $insertar = '            \''.$column[0].'\' => $this->faker->randomFloat(NULL, 1, '.$column[3].'),';
+                            $insertar = '            \''.$column[0].'\' => $this->faker->randomFloat(NULL, 1, '.(isset($column[3])?$column[3]:"10").'),';
                         }
                         else {
                             $insertar = '            \''.$column[0].'\' => $this->faker->' . $basic_fake_value_array[$column[1]] .',';
@@ -494,6 +511,16 @@ class ScaffoldMakeCommand extends Command
 
         //class Driver{public function cars(){return $this->belongsToMany(Car::class);}}
         //class Car{public function drivers(){return $this->belongsToMany(Driver::class);}}
+
+        foreach($has_many as $key => $val) {
+            $nombre = explode(":",$val);
+            $insertar .= PHP_EOL.PHP_EOL.'    public function '.Str::plural(strtolower($nombre[1])).'() {'.PHP_EOL;
+            $insertar .= '        return $this->hasMany('.$nombre[1].'::class);'.PHP_EOL.'    }';
+
+            $insertar .= PHP_EOL.PHP_EOL."    //Insertar en Modelo: ".$nombre[1];
+            $insertar .= PHP_EOL.'    public function '.Str::snake(class_basename($this->argument('class'))).'() {'.PHP_EOL;
+            $insertar .= '        return $this->belongsTo('.class_basename($this->argument('class')).'::class);'.PHP_EOL.'    }';
+        }
 
         foreach($belongs_to_many as $key => $val) {
             $nombres = explode("-", explode(":",$val)[1]);
@@ -567,7 +594,7 @@ class ScaffoldMakeCommand extends Command
             $only_field = explode(":",$field);
             $campo_externo = (isset($only_field[1]) && isset($only_field[2]) && isset($only_field[3])) ? $only_field[3] : "id";
 
-            if (isset($only_field[1]) && isset($only_field[2]) && $only_field[0] == "belongsTo") {
+            if (isset($only_field[1]) && isset($only_field[2]) && ($only_field[0] == "belongsTo" || $only_field[0] == "hasMany")) {
                 $insertar .= '"'.Str::plural(Str::snake(class_basename($only_field[1]))).'.'.$campo_externo.'",';
             } else {
                 $insertar .= '\''.$only_field[0].'\',';
@@ -586,7 +613,7 @@ class ScaffoldMakeCommand extends Command
             $only_field = explode(":",$field);
             $campo_externo = (isset($only_field[1]) && isset($only_field[2]) && isset($only_field[3])) ? $only_field[3] : "id";
 
-            if (isset($only_field[1]) && isset($only_field[2]) && $only_field[0] == "belongsTo") {
+            if (isset($only_field[1]) && isset($only_field[2]) && ($only_field[0] == "belongsTo" || $only_field[0] == "hasMany")) {
                 $insertar .= PHP_EOL.'            ->column(\''.Str::plural(Str::snake(class_basename($only_field[1]))).'.'.$campo_externo.'\', sortable: true)';
             } else {
                 $insertar .= PHP_EOL.'            ->column(\''.$only_field[0].'\', sortable: true)';
@@ -620,13 +647,13 @@ class ScaffoldMakeCommand extends Command
             $numerico = ["bigInteger","bigSerial","serial","float4","float8","int","int2","int4","int8","integer","decimal"];
             $tipo_dato = isset($only_field[1])?(in_array($only_field[1],$numerico)?"integer":"string"):"string";
             $longitud_dato = isset($only_field[2])?$only_field[2]:"255";
-            if ($only_field[0] != "belongsTo") {
+            if ($only_field[0] != "belongsTo" && $only_field[0] != "hasMany") {
                 if ($tipo_dato=="string") {
                     $insertar .= '            \''.$only_field[0].'\' => [\'required\', \''.$tipo_dato.'\', \'max:'.$longitud_dato.'\'],'.PHP_EOL;
                 } else {
                     $insertar .= '            \''.$only_field[0].'\' => [\'required\', \''.$tipo_dato.'\'],'.PHP_EOL;
                 }
-            } else {
+            } elseif ($only_field[0] != "hasMany") {
                 $insertar .= '            \''.$only_field[2].'\' => [\'required\'],'.PHP_EOL;
             }
 
@@ -663,13 +690,13 @@ class ScaffoldMakeCommand extends Command
             $numerico = ["bigInteger","bigSerial","serial","float4","float8","int","int2","int4","int8","integer","decimal"];
             $tipo_dato = isset($only_field[1])?(in_array($only_field[1],$numerico)?"integer":"string"):"string";
             $longitud_dato = isset($only_field[2])?$only_field[2]:"255";
-            if ($only_field[0] != "belongsTo") {
+            if ($only_field[0] != "belongsTo" && $only_field[0] != "hasMany") {
                 if ($tipo_dato=="string") {
                     $insertar .= '            \''.$only_field[0].'\' => [\'required\', \''.$tipo_dato.'\', \'max:'.$longitud_dato.'\'],'.PHP_EOL;
                 } else {
                     $insertar .= '            \''.$only_field[0].'\' => [\'required\', \''.$tipo_dato.'\'],'.PHP_EOL;
                 }
-            } else {
+            } elseif ($only_field[0] != "hasMany") {
                 $insertar .= '            \''.$only_field[2].'\' => [\'required\'],'.PHP_EOL;
             }
         }
