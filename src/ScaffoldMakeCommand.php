@@ -182,7 +182,9 @@ class ScaffoldMakeCommand extends Command
 
         $this->insertFactories();
 
-        $this->insertModelCode();
+        $power_joins = exec("composer show -- kirschbaum-development/eloquent-power-joins | grep 'version'");
+
+        $this->insertModelCode($power_joins);
 
         $this->appendRouteFile();
 
@@ -446,7 +448,7 @@ class ScaffoldMakeCommand extends Command
     }
 
 
-    protected function insertModelCode()
+    protected function insertModelCode(string $power_joins)
     {
         $dir = "app/Models";
 
@@ -523,6 +525,20 @@ class ScaffoldMakeCommand extends Command
         }
 
         $contenido=$split_content[0].$insertar."*/".PHP_EOL."class ".$split_content[1];
+
+        if ($power_joins != "") {
+            $split_content = explode('use Illuminate\Database\Eloquent\Model;', $contenido);
+
+            $insertar = "use Kirschbaum\PowerJoins\PowerJoins;";
+
+            $contenido=$split_content[0].'use Illuminate\Database\Eloquent\Model;'.PHP_EOL.$insertar.$split_content[1];
+
+            $split_content = explode('use HasFactory', $contenido);
+
+            $insertar = ", PowerJoins";
+
+            $contenido=$split_content[0].'use HasFactory'.$insertar.$split_content[1];
+        }
 
         fwrite($f, $contenido);
     }
