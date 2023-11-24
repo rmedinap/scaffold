@@ -594,8 +594,14 @@ class ScaffoldMakeCommand extends Command
             $only_field = explode(":",$field);
             $campo_externo = (isset($only_field[1]) && isset($only_field[2]) && isset($only_field[3])) ? $only_field[3] : "id";
 
-            if (isset($only_field[1]) && isset($only_field[2]) && ($only_field[0] == "belongsTo" || $only_field[0] == "hasMany")) {
-                $insertar .= '"'.Str::plural(Str::snake(class_basename($only_field[1]))).'.'.$campo_externo.'",';
+            if (isset($only_field[1]) && isset($only_field[2]) && ($only_field[0] == "belongsTo" || $only_field[0] == "hasMany" || $only_field[0] == "belongsToMany")) {
+
+                if ($only_field[0] == "belongsToMany") {
+                    $insertar .= '"'.Str::plural(Str::snake(class_basename($only_field[2]))).'.'.$campo_externo.'",';
+                } else {
+                    $insertar .= '"'.Str::plural(Str::snake(class_basename($only_field[1]))).'.'.$campo_externo.'",';
+                }
+
             } else {
                 $insertar .= '\''.$only_field[0].'\',';
             }
@@ -613,8 +619,14 @@ class ScaffoldMakeCommand extends Command
             $only_field = explode(":",$field);
             $campo_externo = (isset($only_field[1]) && isset($only_field[2]) && isset($only_field[3])) ? $only_field[3] : "id";
 
-            if (isset($only_field[1]) && isset($only_field[2]) && ($only_field[0] == "belongsTo" || $only_field[0] == "hasMany")) {
-                $insertar .= PHP_EOL.'            ->column(\''.Str::plural(Str::snake(class_basename($only_field[1]))).'.'.$campo_externo.'\', sortable: true)';
+            if (isset($only_field[1]) && isset($only_field[2]) && ($only_field[0] == "belongsTo" || $only_field[0] == "hasMany" || $only_field[0] == "belongsToMany")) {
+
+                if ($only_field[0] == "belongsToMany") {
+                    $insertar .= PHP_EOL.'            ->column(\''.Str::plural(Str::snake(class_basename($only_field[2]))).'.'.$campo_externo.'\', sortable: true)';
+                } else {
+                    $insertar .= PHP_EOL.'            ->column(\''.Str::plural(Str::snake(class_basename($only_field[1]))).'.'.$campo_externo.'\', sortable: true)';
+                }
+
             } else {
                 $insertar .= PHP_EOL.'            ->column(\''.$only_field[0].'\', sortable: true)';
             }
@@ -647,13 +659,13 @@ class ScaffoldMakeCommand extends Command
             $numerico = ["bigInteger","bigSerial","serial","float4","float8","int","int2","int4","int8","integer","decimal"];
             $tipo_dato = isset($only_field[1])?(in_array($only_field[1],$numerico)?"integer":"string"):"string";
             $longitud_dato = isset($only_field[2])?$only_field[2]:"255";
-            if ($only_field[0] != "belongsTo" && $only_field[0] != "hasMany") {
+            if ($only_field[0] != "belongsTo" && $only_field[0] != "hasMany" && $only_field[0] != "belongsToMany") {
                 if ($tipo_dato=="string") {
                     $insertar .= '            \''.$only_field[0].'\' => [\'required\', \''.$tipo_dato.'\', \'max:'.$longitud_dato.'\'],'.PHP_EOL;
                 } else {
                     $insertar .= '            \''.$only_field[0].'\' => [\'required\', \''.$tipo_dato.'\'],'.PHP_EOL;
                 }
-            } elseif ($only_field[0] != "hasMany") {
+            } elseif ($only_field[0] != "hasMany" && $only_field[0] != "belongsToMany") {
                 $insertar .= '            \''.$only_field[2].'\' => [\'required\'],'.PHP_EOL;
             }
 
@@ -690,13 +702,13 @@ class ScaffoldMakeCommand extends Command
             $numerico = ["bigInteger","bigSerial","serial","float4","float8","int","int2","int4","int8","integer","decimal"];
             $tipo_dato = isset($only_field[1])?(in_array($only_field[1],$numerico)?"integer":"string"):"string";
             $longitud_dato = isset($only_field[2])?$only_field[2]:"255";
-            if ($only_field[0] != "belongsTo" && $only_field[0] != "hasMany") {
+            if ($only_field[0] != "belongsTo" && $only_field[0] != "hasMany" && $only_field[0] != "belongsToMany") {
                 if ($tipo_dato=="string") {
                     $insertar .= '            \''.$only_field[0].'\' => [\'required\', \''.$tipo_dato.'\', \'max:'.$longitud_dato.'\'],'.PHP_EOL;
                 } else {
                     $insertar .= '            \''.$only_field[0].'\' => [\'required\', \''.$tipo_dato.'\'],'.PHP_EOL;
                 }
-            } elseif ($only_field[0] != "hasMany") {
+            } elseif ($only_field[0] != "hasMany" && $only_field[0] != "belongsToMany") {
                 $insertar .= '            \''.$only_field[2].'\' => [\'required\'],'.PHP_EOL;
             }
         }
