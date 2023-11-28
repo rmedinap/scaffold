@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\DummyClassRequest;
 use App\Models\DummyClass;
+DummyRelatedClass
 use App\Tables\DummyClasss;
 use App\Http\Requests\StoreDummyClassRequest;
 use App\Http\Requests\UpdateDummyClassRequest;
@@ -23,7 +24,10 @@ class DummyClassController extends Controller
     {
         $this->authorize('DummyAuthClass_create');
 
-        return view('DummyLowerClass.create');
+        RelatedTableHmAll
+        RelatedTableM2mAll
+
+        return view('DummyLowerClass.create'CompactRelatedTableCreate);
     }
 
     public function store(StoreDummyClassRequest $request)
@@ -34,6 +38,9 @@ class DummyClassController extends Controller
 CreateDataFields
         ]);
 
+        SyncRelatedTableHm
+        SyncRelatedTableM2m
+
         return redirect()->route('DummyLowerClass.index')->with('success', 'DummyClass created successfully.');
     }
 
@@ -41,7 +48,10 @@ CreateDataFields
     {
         $this->authorize('DummyAuthClass_edit');
 
-        return view('DummyLowerClass.edit', compact('DummyProp'));
+        RelatedTableHmAll
+        RelatedTableM2mAll
+
+        return view('DummyLowerClass.edit', compact('DummyProp'CompactRelatedTableEdit));
     }
 
     public function update(UpdateDummyClassRequest $request, DummyClass $DummyProp)
@@ -52,6 +62,9 @@ CreateDataFields
         $DummyProp->update([
 CreateDataFields
         ]);
+
+        SyncRelatedTableHm
+        SyncRelatedTableM2m
 
         return redirect()->route('DummyLowerClass.show', $DummyProp->id)->with('success', 'DummyClass created successfully.');
     }

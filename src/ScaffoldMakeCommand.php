@@ -226,12 +226,49 @@ class ScaffoldMakeCommand extends Command
         $array_fields = array_reverse(array_diff(Schema::getColumnListing($name), ["created_at", "updated_at"]));
         $html_fields = '';
         $html_show_fields = '';
+        $html_related_fields = '';
 
         foreach ($array_fields as $field) {
             if ($field != 'id') {
                 $html_fields .= '                                <x-splade-input name="' . $field . '" label="' . $field . '" type="text" class="mb-5" />'.PHP_EOL;
             }
             $html_show_fields .= '                                    <p>{{ $'.Str::snake(class_basename($this->argument('class'))).'->' . $field . ' }} </p>'.PHP_EOL;
+        }
+
+        // Introduciendo la tabla relacionada correspondiente a los hasMany y belongsToMany
+
+        $array_arguments = $this->argument('fields');
+
+        $has_many = preg_grep('/^hasMany:.*/', $array_arguments);
+        // $belongs_to = preg_grep('/^belongsTo:.*/', $array_arguments);
+        $belongs_to_many = preg_grep('/^belongsToMany:.*/', $array_arguments);
+
+        foreach ($has_many as $this_has_many) {
+            $has = explode(":",$this_has_many);
+            $singular_hm_related_model = Str::lower($has[1]);
+            $plural_hm_related_model = Str::plural(Str::lower($has[1]));
+            $singular_hm_this_model = Str::snake(class_basename($this->argument('class')));
+            $html_related_fields .= '        <x-splade-select name="'.$plural_hm_related_model.'[]" placeholder="Select '.$plural_hm_related_model.'" multiple choices relation label="Select '.$plural_hm_related_model.'">'.PHP_EOL;
+            $html_related_fields .= '            @foreach ($'.$plural_hm_related_model.' as $'.$singular_hm_related_model.')'.PHP_EOL;
+            $html_related_fields .= '                <option value="{{ $'.$singular_hm_related_model.'->id }}">'.PHP_EOL;
+            $html_related_fields .= '                    {{ $'.$singular_hm_related_model.'->'.$has[3].' }}'.PHP_EOL;
+            $html_related_fields .= '                </option>'.PHP_EOL;
+            $html_related_fields .= '            @endforeach'.PHP_EOL;
+            $html_related_fields .= '        </x-splade-select>'.PHP_EOL;
+        }
+
+        foreach ($belongs_to_many as $this_many_to_many) {
+            $has = explode(":",$this_many_to_many);
+            $singular_m2m_related_model = Str::lower($has[2]);
+            $plural_m2m_related_model = Str::plural(Str::lower($has[2]));
+            $singular_m2m_this_model = Str::snake(class_basename($this->argument('class')));
+            $html_related_fields .= '        <x-splade-select name="'.$plural_m2m_related_model.'[]" placeholder="Select '.$plural_m2m_related_model.'" multiple choices relation label="Select '.$plural_m2m_related_model.'">'.PHP_EOL;
+            $html_related_fields .= '            @foreach ($'.$plural_m2m_related_model.' as $'.$singular_m2m_related_model.')'.PHP_EOL;
+            $html_related_fields .= '                <option value="{{ $'.$singular_m2m_related_model.'->id }}">'.PHP_EOL;
+            $html_related_fields .= '                    {{ $'.$singular_m2m_related_model.'->'.$has[3].' }}'.PHP_EOL;
+            $html_related_fields .= '                </option>'.PHP_EOL;
+            $html_related_fields .= '            @endforeach'.PHP_EOL;
+            $html_related_fields .= '        </x-splade-select>'.PHP_EOL;
         }
 
         if (! is_dir(base_path('resources/views/' . $name))) {
@@ -245,13 +282,13 @@ class ScaffoldMakeCommand extends Command
         $cstep2 = str_replace("PluralSnakeClass", $name, $creating);
         $cstep3 = str_replace("SnakeClass", Str::snake(class_basename($this->argument('class'))), $cstep2);
         $cstep4 = str_replace("FormFields", $html_fields, $cstep3);
-        //$cstep4 = str_replace("FormEditFields", $html_edit_fields, $cstep3);
-        $cstep5 = str_replace("ShowFields", $html_show_fields, $cstep4);
-        $cstep6 = str_replace("DummyTitleClass", $titulo, $cstep5);
-        $cstep7 = str_replace("DummyLowerClass", Str::lower($this->argument('class')), $cstep6);
+        $cstep5 = str_replace("RelatedFields", $html_related_fields, $cstep4);
+        $cstep6 = str_replace("ShowFields", $html_show_fields, $cstep5);
+        $cstep7 = str_replace("DummyTitleClass", $titulo, $cstep6);
+        $cstep8 = str_replace("DummyLowerClass", Str::lower($this->argument('class')), $cstep7);
 
-        $cstep8 = str_replace("slideover", $modal, $cstep7);
-        $created = str_replace("DummyClass", $this->argument('class'), $cstep8);
+        $cstep9 = str_replace("slideover", $modal, $cstep8);
+        $created = str_replace("DummyClass", $this->argument('class'), $cstep9);
 
         file_put_contents(base_path('resources/views/' . $name . '/' . $view . '.blade.php'), $created);
     }
@@ -339,6 +376,58 @@ class ScaffoldMakeCommand extends Command
             $create_data_fields .= '                                \'' . $field . '\' => request()->post(\'' . $field . '\'),'.PHP_EOL;
         }
 
+        // Introduciendo la tabla relacionada correspondiente a los hasMany y belongsToMany
+
+        $array_arguments = $this->argument('fields');
+
+        $has_many = preg_grep('/^hasMany:.*/', $array_arguments);
+        // $belongs_to = preg_grep('/^belongsTo:.*/', $array_arguments);
+        $belongs_to_many = preg_grep('/^belongsToMany:.*/', $array_arguments);
+
+        $related_table_hm_all = "";
+        $sync_related_table_hm = "";
+        $dummy_related_class = "";
+        $compact_related_table_create = ", compact(";
+        $compact_related_table_edit = "";
+
+        $i=0;
+
+        foreach ($has_many as $this_has_many) {
+            $has = explode(":",$this_has_many);
+            $plural_hm_related_model = Str::plural(Str::lower($has[1]));
+            $singular_m2m_this_model = Str::snake(class_basename($this->argument('class')));
+            // $users = User::all();
+            $related_table_hm_all .= '$'.$plural_hm_related_model.' = '.$has[1].'::all();'.PHP_EOL;
+            //$chatroom->users()->sync($request->users);
+            //$unidade->users()->saveMany(User::find($request->users));
+            $sync_related_table_hm .= '$'.$singular_m2m_this_model.'->'.$plural_hm_related_model.'()->saveMany('.$has[1].'::find($request->'.$plural_hm_related_model.'));'.PHP_EOL;
+            $compact_related_table_create .= ($i==0)?'\''.$plural_hm_related_model.'\'':', \''.$plural_hm_related_model.'\'';
+            $compact_related_table_edit .= ', \''.$plural_hm_related_model.'\'';
+            $dummy_related_class .= "use App"."\\"."Models"."\\".$has[1].";".PHP_EOL;
+            $i++;
+        }
+
+        $related_table_m2m_all = "";
+        $sync_related_table_m2m = "";
+
+        $i=0;
+
+        foreach ($belongs_to_many as $this_many_to_many) {
+            $has = explode(":",$this_many_to_many);
+            $plural_m2m_related_model = Str::plural(Str::lower($has[2]));
+            $singular_m2m_this_model = Str::snake(class_basename($this->argument('class')));
+            // $users = User::all();
+            $related_table_m2m_all .= '$'.Str::plural(Str::lower($has[2])).' = '.$has[2].'::all();'.PHP_EOL;
+            //$chatroom->users()->sync($request->users);
+            $sync_related_table_m2m .= '$'.$singular_m2m_this_model.'->'.$plural_m2m_related_model.'()->sync($request->'.$plural_m2m_related_model.');';
+            $compact_related_table_create .= ($i==0)?'\''.$plural_m2m_related_model.'\'':', \''.$plural_m2m_related_model.'\'';
+            $compact_related_table_edit .= ', \''.$plural_m2m_related_model.'\'';
+            $dummy_related_class .= "use App"."\\"."Models"."\\".$has[2].";".PHP_EOL;
+            $i++;
+        }
+
+        $compact_related_table_create .= ")";
+
         // taking scaffold stub.
         $source = file_get_contents(__DIR__ . '/stubs/controller.scaffold.stub');
 
@@ -349,11 +438,17 @@ class ScaffoldMakeCommand extends Command
         $step4 = str_replace("DummyClass", $this->argument('class'), $step3);
         $step5 = str_replace("ValidateDataFields", $validate_data_fields, $step4);
         $step6 = str_replace("CreateDataFields", $create_data_fields, $step5);
-
+        $step7 = str_replace("RelatedTableHmAll", $related_table_hm_all, $step6);
+        $step8 = str_replace("RelatedTableM2mAll", $related_table_m2m_all, $step7);
+        $step9 = str_replace("SyncRelatedTableHm", $sync_related_table_hm, $step8);
+        $step10 = str_replace("SyncRelatedTableM2m", $sync_related_table_m2m, $step9);
+        $step11 = str_replace("CompactRelatedTableCreate", $compact_related_table_create, $step10);
+        $step12 = str_replace("CompactRelatedTableEdit", $compact_related_table_edit, $step11);
+        $step13 = str_replace("DummyRelatedClass", $dummy_related_class, $step12);
 
         // put in controller
         $controller = Str::studly(class_basename($this->argument('class')));
-        file_put_contents(base_path($this->config['path']['controller'] . '/' . "{$controller}Controller.php"), $step6);
+        file_put_contents(base_path($this->config['path']['controller'] . '/' . "{$controller}Controller.php"), $step13);
     }
 
     protected function createViews($modal="slideover")

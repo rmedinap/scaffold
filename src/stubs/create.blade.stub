@@ -3,6 +3,7 @@
 
     <x-splade-form action="{{ route('PluralSnakeClass.store') }}">
 FormFields
+RelatedFields
         <x-splade-submit class="mt-5" :spinner="true" />
     </x-splade-form>
 </x-splade-modal>
