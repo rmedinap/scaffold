@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\DummyClassRequest;
 use App\Models\DummyClass;
 DummyRelatedClass
-use App\Tables\DummyClasss;
+use App\Tables\DummyClasses;
 use App\Http\Requests\StoreDummyClassRequest;
 use App\Http\Requests\UpdateDummyClassRequest;
 
@@ -16,7 +16,7 @@ class DummyClassController extends Controller
         $this->authorize('DummyAuthClass_access');
 
         return view('DummyLowerClass.index', [
-            'DummyLowerClass' => DummyClasss::class,
+            'DummyLowerClass' => DummyClasses::class,
         ]);
     }
 

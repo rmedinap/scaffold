@@ -44,7 +44,10 @@ class ScaffoldMakeCommand extends Command
      */
     public function handle()
     {
+        $singular_plural_class = $this->explodeclass();
+
         $this->createRequest();
+        $this->createMigration();
         $this->createModel();
         $this->createTable();
 
@@ -114,7 +117,7 @@ class ScaffoldMakeCommand extends Command
         $insertar = "            // Has Many".PHP_EOL;
         foreach ($has_many as $this_has_many) {
             $has = explode(":",$this_has_many);
-            exec("php artisan make:migration add_".Str::lower($this->argument('class'))."_id_to_".Str::lower($has[1])." --table=".Str::plural(Str::lower($has[1])));
+            exec("php artisan make:migration add_".Str::lower($singular_plural_class[0])."_id_to_".Str::lower($has[1])." --table=".Str::plural(Str::lower($has[1])));
 
             $dir = "database/migrations";
 
@@ -126,11 +129,11 @@ class ScaffoldMakeCommand extends Command
 
             $contenido_foreign = file_get_contents($ruta_migracion_foreign);
 
-            $insertar_foreign_up='$table->integer(\''.Str::lower($this->argument('class')).'_id\')->nullable()->unsigned()->after(\'id\');';
-            $insertar_foreign_up.=PHP_EOL.'            $table->foreign(\''.Str::lower($this->argument('class')).'_id\',\'fk_'.Str::lower($this->argument('class')).'_id\')->references(\'id\')->on(\''.Str::plural(Str::lower($this->argument('class'))).'\')->onUpdate(\'CASCADE\')->onDelete(\'CASCADE\');';
+            $insertar_foreign_up='$table->integer(\''.Str::lower($singular_plural_class[0]).'_id\')->nullable()->unsigned()->after(\'id\');';
+            $insertar_foreign_up.=PHP_EOL.'            $table->foreign(\''.Str::lower($singular_plural_class[0]).'_id\',\'fk_'.Str::lower($singular_plural_class[0]).'_id\')->references(\'id\')->on(\''.Str::lower($singular_plural_class[1]).'\')->onUpdate(\'CASCADE\')->onDelete(\'CASCADE\');';
 
-            $insertar_foreign_down='$table->dropForeign(\'fk_'.Str::lower($this->argument('class')).'_id\');';
-            $insertar_foreign_down.=PHP_EOL.'            $table->dropColumn(\''.Str::lower($this->argument('class')).'_id\');';
+            $insertar_foreign_down='$table->dropForeign(\'fk_'.Str::lower($singular_plural_class[0]).'_id\');';
+            $insertar_foreign_down.=PHP_EOL.'            $table->dropColumn(\''.Str::lower($singular_plural_class[0]).'_id\');';
 
             $split_content = explode('//', $contenido_foreign);
 
@@ -213,14 +216,16 @@ class ScaffoldMakeCommand extends Command
 
         $this->insertInMenu();
 
-        $respuesta= $this->ask('Desea crear los permisos para '.Str::lower($this->argument('class')).' (Enter para continuar): ');
+        $respuesta= $this->ask('Desea crear los permisos para '.Str::lower($singular_plural_class[0]).' (Enter para continuar): ');
 
         if ($respuesta=='' || $respuesta=='S' || $respuesta=='s' || $respuesta=='SI' || $respuesta=='si') $this->setPermissions(); else echo("No se crearon Permisos");
     }
 
     protected function makeViews($view, $modal)
     {
-        $name = Str::plural(Str::snake(class_basename($this->argument('class'))));
+        $singular_plural_class = $this->explodeclass();
+
+        $name = Str::snake(class_basename($singular_plural_class[1]));
 
         $creating = file_get_contents(__DIR__ . '/stubs/' . $view . '.blade.stub');
         $array_fields = array_reverse(array_diff(Schema::getColumnListing($name), ["created_at", "updated_at"]));
@@ -232,7 +237,7 @@ class ScaffoldMakeCommand extends Command
             if ($field != 'id') {
                 $html_fields .= '                                <x-splade-input name="' . $field . '" label="' . $field . '" type="text" class="mb-5" />'.PHP_EOL;
             }
-            $html_show_fields .= '                                    <p>{{ $'.Str::snake(class_basename($this->argument('class'))).'->' . $field . ' }} </p>'.PHP_EOL;
+            $html_show_fields .= '                                    <p>{{ $'.Str::snake(class_basename($singular_plural_class[0])).'->' . $field . ' }} </p>'.PHP_EOL;
         }
 
         // Introduciendo la tabla relacionada correspondiente a los hasMany y belongsToMany
@@ -247,7 +252,7 @@ class ScaffoldMakeCommand extends Command
             $has = explode(":",$this_has_many);
             $singular_hm_related_model = Str::lower($has[1]);
             $plural_hm_related_model = Str::plural(Str::lower($has[1]));
-            $singular_hm_this_model = Str::snake(class_basename($this->argument('class')));
+            $singular_hm_this_model = Str::snake(class_basename($singular_plural_class[0]));
             $html_related_fields .= '        <x-splade-select name="'.$plural_hm_related_model.'[]" placeholder="Select '.$plural_hm_related_model.'" multiple choices relation label="Select '.$plural_hm_related_model.'">'.PHP_EOL;
             $html_related_fields .= '            @foreach ($'.$plural_hm_related_model.' as $'.$singular_hm_related_model.')'.PHP_EOL;
             $html_related_fields .= '                <option value="{{ $'.$singular_hm_related_model.'->id }}">'.PHP_EOL;
@@ -261,7 +266,7 @@ class ScaffoldMakeCommand extends Command
             $has = explode(":",$this_many_to_many);
             $singular_m2m_related_model = Str::lower($has[2]);
             $plural_m2m_related_model = Str::plural(Str::lower($has[2]));
-            $singular_m2m_this_model = Str::snake(class_basename($this->argument('class')));
+            $singular_m2m_this_model = Str::snake(class_basename($singular_plural_class[0]));
             $html_related_fields .= '        <x-splade-select name="'.$plural_m2m_related_model.'[]" placeholder="Select '.$plural_m2m_related_model.'" multiple choices relation label="Select '.$plural_m2m_related_model.'">'.PHP_EOL;
             $html_related_fields .= '            @foreach ($'.$plural_m2m_related_model.' as $'.$singular_m2m_related_model.')'.PHP_EOL;
             $html_related_fields .= '                <option value="{{ $'.$singular_m2m_related_model.'->id }}">'.PHP_EOL;
@@ -277,18 +282,18 @@ class ScaffoldMakeCommand extends Command
 
         touch(base_path('resources/views/' . $name . '/' . $view . '.blade.php'));
 
-        $titulo = preg_replace('/([a-z])([A-Z])/s','$1 $2', $this->argument('class'));
+        $titulo = preg_replace('/([a-z])([A-Z])/s','$1 $2', $singular_plural_class[0]);
 
         $cstep2 = str_replace("PluralSnakeClass", $name, $creating);
-        $cstep3 = str_replace("SnakeClass", Str::snake(class_basename($this->argument('class'))), $cstep2);
+        $cstep3 = str_replace("SnakeClass", Str::snake(class_basename($singular_plural_class[0])), $cstep2);
         $cstep4 = str_replace("FormFields", $html_fields, $cstep3);
         $cstep5 = str_replace("RelatedFields", $html_related_fields, $cstep4);
         $cstep6 = str_replace("ShowFields", $html_show_fields, $cstep5);
         $cstep7 = str_replace("DummyTitleClass", $titulo, $cstep6);
-        $cstep8 = str_replace("DummyLowerClass", Str::lower($this->argument('class')), $cstep7);
+        $cstep8 = str_replace("DummyLowerClass", Str::lower($singular_plural_class[0]), $cstep7);
 
         $cstep9 = str_replace("slideover", $modal, $cstep8);
-        $created = str_replace("DummyClass", $this->argument('class'), $cstep9);
+        $created = str_replace("DummyClass", $singular_plural_class[0], $cstep9);
 
         file_put_contents(base_path('resources/views/' . $name . '/' . $view . '.blade.php'), $created);
     }
@@ -298,9 +303,11 @@ class ScaffoldMakeCommand extends Command
      */
     protected function createFactory()
     {
+        $singular_plural_class = $this->explodeclass();
+
         $this->call('make:factory', [
-            'name' => $this->argument('class').'Factory',
-            '--model' => $this->argument('class'),
+            'name' => $singular_plural_class[0].'Factory',
+            '--model' => $singular_plural_class[0],
         ]);
     }
 
@@ -309,8 +316,9 @@ class ScaffoldMakeCommand extends Command
      */
     protected function createMigration()
     {
-        $table = Str::plural(Str::snake(class_basename($this->argument('class'))));
+        $singular_plural_class = $this->explodeclass();
 
+        $table = Str::snake($singular_plural_class[1]);
 
         // $this->call('make:migration', [
         //     'name' => "create_{$table}_table".$this->argument('fields'),
@@ -326,7 +334,9 @@ class ScaffoldMakeCommand extends Command
      */
     protected function createController()
     {
-        $controller = Str::studly(class_basename($this->argument('class')));
+        $singular_plural_class = $this->explodeclass();
+
+        $controller = Str::studly(class_basename($singular_plural_class[0]));
 
         $this->call('make:controller', [
             'name' => "{$controller}Controller",
@@ -336,11 +346,16 @@ class ScaffoldMakeCommand extends Command
 
     protected function createModel()
     {
+        $singular_plural_class = $this->explodeclass();
+
         // $array_fields = $this->argument('fields');
 
         $this->call('make:model', [
-            'name' => $this->argument('class'),
-            '--all' => true,
+            'name' => $singular_plural_class[0],
+            '-c' => true,
+            '-R' => true,
+            '-f' => true,
+            '-r' => true,
         ]);
 
         // exit(print_r($array_fields));
@@ -348,7 +363,9 @@ class ScaffoldMakeCommand extends Command
 
     protected function createRequest()
     {
-        $request = Str::studly(class_basename($this->argument('class')));
+        $singular_plural_class = $this->explodeclass();
+
+        $request = Str::studly(class_basename($singular_plural_class[0]));
 
         $this->call('make:request', [
             'name' => "{$request}Request"
@@ -357,14 +374,18 @@ class ScaffoldMakeCommand extends Command
 
     protected function createTable()
     {
+        $singular_plural_class = $this->explodeclass();
+
         $this->call('make:table', [
-            'name' => Str::plural($this->argument('class'))
+            'name' => $singular_plural_class[1]
         ]);
     }
 
     protected function updateDummyNameController()
     {
-        $name = Str::plural(Str::snake(class_basename($this->argument('class'))));
+        $singular_plural_class = $this->explodeclass();
+
+        $name = Str::snake(class_basename($singular_plural_class[1]));
 
         // Listado de campos del Modelo/Schema.
         $array_fields = array_reverse(array_diff(Schema::getColumnListing($name), ["created_at", "updated_at"]));
@@ -395,7 +416,7 @@ class ScaffoldMakeCommand extends Command
         foreach ($has_many as $this_has_many) {
             $has = explode(":",$this_has_many);
             $plural_hm_related_model = Str::plural(Str::lower($has[1]));
-            $singular_m2m_this_model = Str::snake(class_basename($this->argument('class')));
+            $singular_m2m_this_model = Str::snake(class_basename($singular_plural_class[0]));
             // $users = User::all();
             $related_table_hm_all .= '$'.$plural_hm_related_model.' = '.$has[1].'::all();'.PHP_EOL;
             //$chatroom->users()->sync($request->users);
@@ -415,7 +436,7 @@ class ScaffoldMakeCommand extends Command
         foreach ($belongs_to_many as $this_many_to_many) {
             $has = explode(":",$this_many_to_many);
             $plural_m2m_related_model = Str::plural(Str::lower($has[2]));
-            $singular_m2m_this_model = Str::snake(class_basename($this->argument('class')));
+            $singular_m2m_this_model = Str::snake(class_basename($singular_plural_class[0]));
             // $users = User::all();
             $related_table_m2m_all .= '$'.Str::plural(Str::lower($has[2])).' = '.$has[2].'::all();'.PHP_EOL;
             //$chatroom->users()->sync($request->users);
@@ -432,23 +453,24 @@ class ScaffoldMakeCommand extends Command
         $source = file_get_contents(__DIR__ . '/stubs/controller.scaffold.stub');
 
         // replace dummy name.
-        $step1 = str_replace("DummyProp", Str::snake(class_basename($this->argument('class'))), $source);
-        $step2 = str_replace("DummyAuthClass", Str::lower($this->argument('class')), $step1);
+        $step1 = str_replace("DummyProp", Str::snake(class_basename($singular_plural_class[0])), $source);
+        $step2 = str_replace("DummyAuthClass", Str::lower($singular_plural_class[0]), $step1);
         $step3 = str_replace("DummyLowerClass", $name, $step2);
-        $step4 = str_replace("DummyClass", $this->argument('class'), $step3);
-        $step5 = str_replace("ValidateDataFields", $validate_data_fields, $step4);
-        $step6 = str_replace("CreateDataFields", $create_data_fields, $step5);
-        $step7 = str_replace("RelatedTableHmAll", $related_table_hm_all, $step6);
-        $step8 = str_replace("RelatedTableM2mAll", $related_table_m2m_all, $step7);
-        $step9 = str_replace("SyncRelatedTableHm", $sync_related_table_hm, $step8);
-        $step10 = str_replace("SyncRelatedTableM2m", $sync_related_table_m2m, $step9);
-        $step11 = str_replace("CompactRelatedTableCreate", $compact_related_table_create, $step10);
-        $step12 = str_replace("CompactRelatedTableEdit", $compact_related_table_edit, $step11);
-        $step13 = str_replace("DummyRelatedClass", $dummy_related_class, $step12);
+        $step4 = str_replace("DummyClasses", $singular_plural_class[1], $step3);
+        $step5 = str_replace("DummyClass", $singular_plural_class[0], $step4);
+        $step6 = str_replace("ValidateDataFields", $validate_data_fields, $step5);
+        $step7 = str_replace("CreateDataFields", $create_data_fields, $step6);
+        $step8 = str_replace("RelatedTableHmAll", $related_table_hm_all, $step7);
+        $step9 = str_replace("RelatedTableM2mAll", $related_table_m2m_all, $step8);
+        $step10 = str_replace("SyncRelatedTableHm", $sync_related_table_hm, $step9);
+        $step11 = str_replace("SyncRelatedTableM2m", $sync_related_table_m2m, $step10);
+        $step12 = str_replace("CompactRelatedTableCreate", $compact_related_table_create, $step11);
+        $step13 = str_replace("CompactRelatedTableEdit", $compact_related_table_edit, $step12);
+        $step14 = str_replace("DummyRelatedClass", $dummy_related_class, $step13);
 
         // put in controller
-        $controller = Str::studly(class_basename($this->argument('class')));
-        file_put_contents(base_path($this->config['path']['controller'] . '/' . "{$controller}Controller.php"), $step13);
+        $controller = Str::studly(class_basename($singular_plural_class[0]));
+        file_put_contents(base_path($this->config['path']['controller'] . '/' . "{$controller}Controller.php"), $step14);
     }
 
     protected function createViews($modal="slideover")
@@ -461,9 +483,11 @@ class ScaffoldMakeCommand extends Command
 
     protected function appendRouteFile()
     {
-        $name = Str::plural(Str::snake(class_basename($this->argument('class'))));
-        $name_singular = Str::snake(class_basename($this->argument('class')));
-        $controller = Str::studly(class_basename($this->argument('class')));
+        $singular_plural_class = $this->explodeclass();
+
+        $name = Str::snake(class_basename($singular_plural_class[1]));
+        $name_singular = Str::snake(class_basename($singular_plural_class[0]));
+        $controller = Str::studly(class_basename($singular_plural_class[0]));
 
         $rroute_stub = file_get_contents(__DIR__ . '/stubs/routes.stub');
         $rstep2 = str_replace("PluralSnakeClass", $name, $rroute_stub);
@@ -479,6 +503,8 @@ class ScaffoldMakeCommand extends Command
 
     protected function insertFactories()
     {
+        $singular_plural_class = $this->explodeclass();
+
         $dir = "database/factories";
 
         $newest_factory = $this->last_file($dir);
@@ -562,6 +588,8 @@ class ScaffoldMakeCommand extends Command
 
     protected function insertModelCode(string $power_joins)
     {
+        $singular_plural_class = $this->explodeclass();
+
         $dir = "app/Models";
 
         $insertar = "";
@@ -613,8 +641,8 @@ class ScaffoldMakeCommand extends Command
             $insertar .= '        return $this->hasMany('.$nombre[1].'::class);'.PHP_EOL.'    }';
 
             $insertar .= PHP_EOL.PHP_EOL."    //Insertar en Modelo: ".$nombre[1];
-            $insertar .= PHP_EOL.'    public function '.Str::snake(class_basename($this->argument('class'))).'() {'.PHP_EOL;
-            $insertar .= '        return $this->belongsTo('.class_basename($this->argument('class')).'::class);'.PHP_EOL.'    }';
+            $insertar .= PHP_EOL.'    public function '.Str::snake(class_basename($singular_plural_class[0])).'() {'.PHP_EOL;
+            $insertar .= '        return $this->belongsTo('.class_basename($singular_plural_class[0]).'::class);'.PHP_EOL.'    }';
         }
 
         foreach($belongs_to_many as $key => $val) {
@@ -633,7 +661,7 @@ class ScaffoldMakeCommand extends Command
         $split_content = explode('class ', $contenido);
 
         $insertar = '/**
-* Class '.$this->argument('class').'
+* Class '.$singular_plural_class[0].'
 *
 * @package '.$dir.PHP_EOL;
 
@@ -669,6 +697,8 @@ class ScaffoldMakeCommand extends Command
 
     protected function insertTableCode($paginacion = "25")
     {
+        $singular_plural_class = $this->explodeclass();
+
         $dir = "app/Tables";
 
         $insertar = "";
@@ -680,6 +710,16 @@ class ScaffoldMakeCommand extends Command
         $f=fopen($ruta_table, 'r+');
 
         $contenido = file_get_contents($ruta_table);
+
+        $pattern = '/App\\\Models\\\[A-Z][a-z]+/';
+        $replacement = 'App\\Models\\'.$singular_plural_class[0];
+
+        $contenido = preg_replace($pattern, $replacement, $contenido);
+
+        $pattern = '/[A-Z][a-z]+::query/';
+        $replacement = $singular_plural_class[0]."::query";
+
+        $contenido = preg_replace($pattern, $replacement, $contenido);
 
         $split_content = explode("['id'", $contenido);
 
@@ -733,7 +773,9 @@ class ScaffoldMakeCommand extends Command
     }
 
     protected function insertRequestCode() {
-        $requestName = Str::studly(class_basename($this->argument('class')));
+        $singular_plural_class = $this->explodeclass();
+
+        $requestName = Str::studly(class_basename($singular_plural_class[0]));
 
         $dir = "app/Http/Requests";
 
@@ -773,7 +815,7 @@ class ScaffoldMakeCommand extends Command
         $contenido=$split_content[0].$insertar.PHP_EOL.$split_content[1];
 
         $split_content = explode("return false;", $contenido);
-        $insertar = "return Gate::allows('".Str::lower($this->argument('class'))."_create');";
+        $insertar = "return Gate::allows('".Str::lower($singular_plural_class[0])."_create');";
         $contenido=$split_content[0].$insertar.PHP_EOL.$split_content[1];
 
         fwrite($f, $contenido);
@@ -815,16 +857,18 @@ class ScaffoldMakeCommand extends Command
         $contenido=$split_content[0].$insertar.PHP_EOL.$split_content[1];
 
         $split_content = explode("return false;", $contenido);
-        $insertar = "return Gate::allows('".Str::lower($this->argument('class'))."_create');";
+        $insertar = "return Gate::allows('".Str::lower($singular_plural_class[0])."_create');";
         $contenido=$split_content[0].$insertar.PHP_EOL.$split_content[1];
 
         fwrite($f, $contenido);
     }
 
     function setPermissions() {
+        $singular_plural_class = $this->explodeclass();
+
         $usuario_admin=User::find(1);
-        // $clase = Str::snake(class_basename($this->argument('class')));
-        $clase = Str::lower($this->argument('class'));
+        // $clase = Str::snake(class_basename($singular_plural_class[0]));
+        $clase = Str::lower($singular_plural_class[0]);
         $permisos = ["_access", "_show", "_create", "_edit", "_delete"];
         foreach ($permisos as $permiso) {
             $title = $clase.$permiso;
@@ -839,12 +883,14 @@ class ScaffoldMakeCommand extends Command
     }
 
     function insertInMenu() {
+        $singular_plural_class = $this->explodeclass();
+
         $ruta_menu = "resources/views/layouts/navigation.blade.php";
 
-        $ruta = Str::snake($this->argument('class'));
-        $clase = Str::plural($ruta);
-        $can = Str::lower($this->argument('class'));
-        $titulo = preg_replace('/([a-z])([A-Z])/s','$1 $2', $this->argument('class'));
+        $ruta = Str::snake($singular_plural_class[0]);
+        $clase = Str::snake($singular_plural_class[1]);
+        $can = Str::lower($singular_plural_class[0]);
+        $titulo = preg_replace('/([a-z])([A-Z])/s','$1 $2', $singular_plural_class[0]);
 
         $f=fopen($ruta_menu, 'r+');
 
@@ -888,5 +934,15 @@ class ScaffoldMakeCommand extends Command
             }
         }
         return $latest["file"];
+    }
+
+    protected function explodeclass() {
+        $clase_completa = explode(":",$this->argument('class'));
+
+        $singular = $clase_completa[0];
+
+        $plural = isset($clase_completa[1])?$clase_completa[1]:$singular."s";
+
+        return [$singular, $plural];
     }
 }
