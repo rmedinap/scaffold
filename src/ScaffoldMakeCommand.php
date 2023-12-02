@@ -169,7 +169,7 @@ class ScaffoldMakeCommand extends Command
 
             $insertar .= '            $table->integer(\''.strtolower($belong_mix[0]).'_id\')->unsigned()->index();'.PHP_EOL;
 
-            $insertar .= '            $table->foreign(\''.strtolower($belong_mix[0]).'_id\')->references(\'id\')->on(\''.Str::plural(strtolower($belong_mix[0])).'\')->onDelete(\'cascade\');'.PHP_EOL;
+            $insertar .= '            $table->foreign(\''.strtolower($belong_mix[0]).'_id\')->references(\'id\')->on(\''.Str::lower($singular_plural_class[1]).'\')->onDelete(\'cascade\');'.PHP_EOL;
 
             $insertar .= '            $table->integer(\''.strtolower($belong_mix[1]).'_id\')->unsigned()->index();'.PHP_EOL;
 
@@ -647,16 +647,16 @@ class ScaffoldMakeCommand extends Command
 
         foreach($belongs_to_many as $key => $val) {
             $nombres = explode("-", explode(":",$val)[1]);
-            $insertar .= PHP_EOL.PHP_EOL."    //Insertar en Modelo: ".$nombres[0];
-            $insertar .= PHP_EOL.'    public function '.Str::plural(strtolower($nombres[0])).'() {'.PHP_EOL;
+            $insertar .= PHP_EOL.PHP_EOL."    //Insertar en Modelo: ".$nombres[1];
+            $insertar .= PHP_EOL.'    public function '.Str::lower($singular_plural_class[1]).'() {'.PHP_EOL;
             $insertar .= '        return $this->belongsToMany('.$nombres[0].'::class);'.PHP_EOL.'    }';
 
-            $insertar .= PHP_EOL.PHP_EOL."    //Insertar en Modelo: ".$nombres[1];
+            $insertar .= PHP_EOL.PHP_EOL."    //Insertar en Modelo: ".$nombres[0];
             $insertar .= PHP_EOL.'    public function '.Str::plural(strtolower($nombres[1])).'() {'.PHP_EOL;
             $insertar .= '        return $this->belongsToMany('.$nombres[1].'::class);'.PHP_EOL.'    }';
         }
 
-        $contenido=$split_content[0].$insertar.PHP_EOL."}";
+        $contenido=$split_content[0].$insertar.PHP_EOL.'protected $table = \''.Str::lower($singular_plural_class[1]).'\';'.PHP_EOL."}";
 
         $split_content = explode('class ', $contenido);
 
