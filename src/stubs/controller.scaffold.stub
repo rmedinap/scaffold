@@ -38,7 +38,7 @@ class DummyClassController extends Controller
 CreateDataFields
         ]);
 
-        SyncRelatedTableHm
+        //SyncRelatedTableHm
         SyncRelatedTableM2m
 
         return redirect()->route('DummyLowerClass.index')->with('success', 'DummyClass created successfully.');
@@ -63,7 +63,7 @@ CreateDataFields
 CreateDataFields
         ]);
 
-        SyncRelatedTableHm
+        //SyncRelatedTableHm
         SyncRelatedTableM2m
 
         return redirect()->route('DummyLowerClass.show', $DummyProp->id)->with('success', 'DummyClass created successfully.');

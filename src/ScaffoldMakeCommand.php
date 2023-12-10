@@ -234,7 +234,7 @@ class ScaffoldMakeCommand extends Command
         $html_related_fields = '';
 
         foreach ($array_fields as $field) {
-            if ($field != 'id') {
+            if ($field != 'id' && !strpos($field, '_id')) {
                 $html_fields .= '                                <x-splade-input name="' . $field . '" label="' . $field . '" type="text" class="mb-5" />'.PHP_EOL;
             }
             $html_show_fields .= '                                    <p>{{ $'.Str::snake(class_basename($singular_plural_class[0])).'->' . $field . ' }} </p>'.PHP_EOL;
@@ -245,7 +245,7 @@ class ScaffoldMakeCommand extends Command
         $array_arguments = $this->argument('fields');
 
         $has_many = preg_grep('/^hasMany:.*/', $array_arguments);
-        // $belongs_to = preg_grep('/^belongsTo:.*/', $array_arguments);
+        $belongs_to = preg_grep('/^belongsTo:.*/', $array_arguments);
         $belongs_to_many = preg_grep('/^belongsToMany:.*/', $array_arguments);
 
         foreach ($has_many as $this_has_many) {
@@ -257,6 +257,19 @@ class ScaffoldMakeCommand extends Command
             $html_related_fields .= '            @foreach ($'.$plural_hm_related_model.' as $'.$singular_hm_related_model.')'.PHP_EOL;
             $html_related_fields .= '                <option value="{{ $'.$singular_hm_related_model.'->id }}">'.PHP_EOL;
             $html_related_fields .= '                    {{ $'.$singular_hm_related_model.'->'.$has[3].' }}'.PHP_EOL;
+            $html_related_fields .= '                </option>'.PHP_EOL;
+            $html_related_fields .= '            @endforeach'.PHP_EOL;
+            $html_related_fields .= '        </x-splade-select>'.PHP_EOL;
+        }
+
+        foreach ($belongs_to as $this_belongs_to) {
+            $has = explode(":",$this_belongs_to);
+            $singular_b2_related_model = Str::lower($has[1]);
+            $plural_b2_related_model = Str::lower($has[2]);
+            $html_related_fields .= '        <x-splade-select name="'.$plural_b2_related_model.'[]" placeholder="Select '.$singular_b2_related_model.'" choices  relation label="Select '.$singular_b2_related_model.'">'.PHP_EOL;
+            $html_related_fields .= '            @foreach ($'.$plural_b2_related_model.' as $'.$singular_b2_related_model.')'.PHP_EOL;
+            $html_related_fields .= '                <option value="{{ $'.$singular_b2_related_model.'->id }}">'.PHP_EOL;
+            $html_related_fields .= '                    {{ $'.$singular_b2_related_model.'->'.$has[3].' }}'.PHP_EOL;
             $html_related_fields .= '                </option>'.PHP_EOL;
             $html_related_fields .= '            @endforeach'.PHP_EOL;
             $html_related_fields .= '        </x-splade-select>'.PHP_EOL;
@@ -402,7 +415,7 @@ class ScaffoldMakeCommand extends Command
         $array_arguments = $this->argument('fields');
 
         $has_many = preg_grep('/^hasMany:.*/', $array_arguments);
-        // $belongs_to = preg_grep('/^belongsTo:.*/', $array_arguments);
+        $belongs_to = preg_grep('/^belongsTo:.*/', $array_arguments);
         $belongs_to_many = preg_grep('/^belongsToMany:.*/', $array_arguments);
 
         $related_table_hm_all = "";
@@ -417,6 +430,25 @@ class ScaffoldMakeCommand extends Command
             $has = explode(":",$this_has_many);
             $plural_hm_related_model = Str::plural(Str::lower($has[1]));
             $singular_m2m_this_model = Str::snake(class_basename($singular_plural_class[0]));
+            // $users = User::all();
+            $related_table_hm_all .= '$'.$plural_hm_related_model.' = '.$has[1].'::all();'.PHP_EOL;
+            //$chatroom->users()->sync($request->users);
+            //$unidade->users()->saveMany(User::find($request->users));
+            $sync_related_table_hm .= '$'.$singular_m2m_this_model.'->'.$plural_hm_related_model.'()->saveMany('.$has[1].'::find($request->'.$plural_hm_related_model.'));'.PHP_EOL;
+            $compact_related_table_create .= ($i==0)?'\''.$plural_hm_related_model.'\'':', \''.$plural_hm_related_model.'\'';
+            $compact_related_table_edit .= ', \''.$plural_hm_related_model.'\'';
+            $dummy_related_class .= "use App"."\\"."Models"."\\".$has[1].";".PHP_EOL;
+            $i++;
+        }
+
+        $i=0;
+
+        foreach ($belongs_to as $this_belong_to) {
+            $has = explode(":",$this_belong_to);
+            $plural_hm_related_model = Str::plural(Str::lower($has[1]));
+            $singular_m2m_this_model = Str::snake(class_basename($singular_plural_class[0]));
+
+
             // $users = User::all();
             $related_table_hm_all .= '$'.$plural_hm_related_model.' = '.$has[1].'::all();'.PHP_EOL;
             //$chatroom->users()->sync($request->users);
@@ -618,13 +650,13 @@ class ScaffoldMakeCommand extends Command
         foreach ($array_fields as $field) {
             $only_field = explode(":",$field);
             if (isset($only_field[1]) && isset($only_field[2]) && $only_field[0] == "belongsTo") {
-                $insertar .= '"'.$only_field[2].'",';
+                $insertar .= '"'.Str::lower($only_field[2]).'",';
             } else {
                 $insertar .= '"'.$only_field[0].'",';
             }
         }
 
-        $insertar = '    protected $fillable = ['.rtrim($insertar,",").'];';
+        $insertar = PHP_EOL.'    protected $table = \''.Str::lower($singular_plural_class[1]).'\';'.PHP_EOL.PHP_EOL.'    protected $fillable = ['.rtrim($insertar,",").'];';
 
         foreach($belongs_to as $key => $val) {
             $nombre = explode(":",$val);
@@ -645,18 +677,36 @@ class ScaffoldMakeCommand extends Command
             $insertar .= '        return $this->belongsTo('.class_basename($singular_plural_class[0]).'::class);'.PHP_EOL.'    }';
         }
 
+        $insertar_externo = "";
+
         foreach($belongs_to_many as $key => $val) {
             $nombres = explode("-", explode(":",$val)[1]);
-            $insertar .= PHP_EOL.PHP_EOL."    //Insertar en Modelo: ".$nombres[1];
-            $insertar .= PHP_EOL.'    public function '.Str::lower($singular_plural_class[1]).'() {'.PHP_EOL;
-            $insertar .= '        return $this->belongsToMany('.$nombres[0].'::class);'.PHP_EOL.'    }';
+            $clase_externa_b2m = explode(":",$val)[2];
+            $insertar .= PHP_EOL.PHP_EOL."    //Relacion con: ".$clase_externa_b2m;
 
-            $insertar .= PHP_EOL.PHP_EOL."    //Insertar en Modelo: ".$nombres[0];
             $insertar .= PHP_EOL.'    public function '.Str::plural(strtolower($nombres[1])).'() {'.PHP_EOL;
             $insertar .= '        return $this->belongsToMany('.$nombres[1].'::class);'.PHP_EOL.'    }';
+
+            //Insertar en Modelo Externo
+
+            $ruta_model_externo = $dir . '/' . $clase_externa_b2m . '.php';
+
+            $insertar_externo .= PHP_EOL."    //Relacion con: ".$singular_plural_class[0].PHP_EOL;
+            $insertar_externo .= PHP_EOL.'    public function '.Str::lower($singular_plural_class[1]).'() {'.PHP_EOL;
+            $insertar_externo .= '        return $this->belongsToMany('.$nombres[0].'::class);'.PHP_EOL.'    }';
+
+            $g = fopen($ruta_model_externo, 'r+');
+
+            $contenido_externo = file_get_contents($ruta_model_externo);
+
+            $last_mustache_pos = strrpos($contenido_externo, '}', -1) - 1;
+
+            $contenido_externo = substr($contenido_externo,0,$last_mustache_pos).PHP_EOL.$insertar_externo.PHP_EOL."}";
+
+            fwrite($g, $contenido_externo);
         }
 
-        $contenido=$split_content[0].$insertar.PHP_EOL.'protected $table = \''.Str::lower($singular_plural_class[1]).'\';'.PHP_EOL."}";
+        $contenido=$split_content[0].$insertar.PHP_EOL."}";
 
         $split_content = explode('class ', $contenido);
 
@@ -803,7 +853,7 @@ class ScaffoldMakeCommand extends Command
                     $insertar .= '            \''.$only_field[0].'\' => [\'required\', \''.$tipo_dato.'\'],'.PHP_EOL;
                 }
             } elseif ($only_field[0] != "hasMany" && $only_field[0] != "belongsToMany") {
-                $insertar .= '            \''.$only_field[2].'\' => [\'required\'],'.PHP_EOL;
+                $insertar .= '            \''.Str::lower($only_field[2]).'\' => [\'required\'],'.PHP_EOL;
             }
 
         }
