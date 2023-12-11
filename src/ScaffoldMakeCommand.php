@@ -407,7 +407,7 @@ class ScaffoldMakeCommand extends Command
 
         foreach ($array_fields as $field) {
             $validate_data_fields .= '                                \'' . $field . '\' => \'required\','.PHP_EOL;
-            $create_data_fields .= '                                \'' . $field . '\' => request()->post(\'' . $field . '\'),'.PHP_EOL;
+            $create_data_fields .= '                                \'' . $field . '\' => request()->post(\'' . str_replace("_id", "",$field) . '\'),'.PHP_EOL;
         }
 
         // Introduciendo la tabla relacionada correspondiente a los hasMany y belongsToMany
@@ -650,7 +650,7 @@ class ScaffoldMakeCommand extends Command
         foreach ($array_fields as $field) {
             $only_field = explode(":",$field);
             if (isset($only_field[1]) && isset($only_field[2]) && $only_field[0] == "belongsTo") {
-                $insertar .= '"'.Str::lower($only_field[2]).'",';
+                $insertar .= '"'.Str::lower($only_field[2]).'_id",';
             } else {
                 $insertar .= '"'.$only_field[0].'",';
             }
@@ -896,7 +896,7 @@ class ScaffoldMakeCommand extends Command
                     $insertar .= '            \''.$only_field[0].'\' => [\'required\', \''.$tipo_dato.'\'],'.PHP_EOL;
                 }
             } elseif ($only_field[0] != "hasMany" && $only_field[0] != "belongsToMany") {
-                $insertar .= '            \''.$only_field[2].'\' => [\'required\'],'.PHP_EOL;
+                $insertar .= '            \''.Str::lower($only_field[2]).'\' => [\'required\'],'.PHP_EOL;
             }
         }
 
