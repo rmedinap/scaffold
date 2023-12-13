@@ -658,10 +658,37 @@ class ScaffoldMakeCommand extends Command
 
         $insertar = PHP_EOL.'    protected $table = \''.Str::lower($singular_plural_class[1]).'\';'.PHP_EOL.PHP_EOL.'    protected $fillable = ['.rtrim($insertar,",").'];';
 
+        $insertar_externo = "";
+
         foreach($belongs_to as $key => $val) {
             $nombre = explode(":",$val);
+            $clase_externa_b2 = $nombre[1];
             $insertar .= PHP_EOL.PHP_EOL.'    public function '.Str::plural(strtolower($nombre[1])).'() {'.PHP_EOL;
-            $insertar .= '        return $this->belongsTo('.$nombre[1].'::class);'.PHP_EOL.'    }';
+            $insertar .= '        return $this->belongsTo('.$clase_externa_b2.'::class);'.PHP_EOL.'    }';
+
+            //Insertar en Modelo Externo
+
+            $ruta_model_externo = $dir . '/' . $clase_externa_b2 . '.php';
+
+            $insertar_externo .= PHP_EOL."    //Relacion con: ".$singular_plural_class[0].PHP_EOL;
+            $insertar_externo .= PHP_EOL.'    public function '.Str::lower($singular_plural_class[1]).'(): HasMany {'.PHP_EOL;
+            $insertar_externo .= '        return $this->hasMany('.$singular_plural_class[0].'::class);'.PHP_EOL.'    }';
+
+            $g = fopen($ruta_model_externo, 'r+');
+
+            $contenido_externo = file_get_contents($ruta_model_externo);
+
+            $last_mustache_pos = strrpos($contenido_externo, '}', -1) - 1;
+
+            $contenido_externo = substr($contenido_externo,0,$last_mustache_pos).PHP_EOL.$insertar_externo.PHP_EOL."}";
+
+            $eloquentHasMany = "use Illuminate\Database\Eloquent\Relations\HasMany;";
+
+            $partes = explode("\nclass", $contenido_externo);
+
+            $contenido_externo = $partes[0].$eloquentHasMany.PHP_EOL.PHP_EOL."class".$partes[1];
+
+            fwrite($g, $contenido_externo);
         }
 
         //class Driver{public function cars(){return $this->belongsToMany(Car::class);}}
