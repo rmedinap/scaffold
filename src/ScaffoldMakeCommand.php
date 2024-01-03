@@ -117,6 +117,7 @@ class ScaffoldMakeCommand extends Command
         $insertar = "            // Has Many".PHP_EOL;
         foreach ($has_many as $this_has_many) {
             $has = explode(":",$this_has_many);
+            sleep(2);
             exec("php artisan make:migration add_".Str::lower($singular_plural_class[0])."_id_to_".Str::lower($has[1])." --table=".Str::plural(Str::lower($has[1])));
 
             $dir = "database/migrations";
@@ -327,7 +328,7 @@ class ScaffoldMakeCommand extends Command
     /**
      * @deprecated
      */
-    protected function createMigration()
+    public function createMigration()
     {
         $singular_plural_class = $this->explodeclass();
 
@@ -407,7 +408,7 @@ class ScaffoldMakeCommand extends Command
 
         foreach ($array_fields as $field) {
             $validate_data_fields .= '                                \'' . $field . '\' => \'required\','.PHP_EOL;
-            $create_data_fields .= '                                \'' . $field . '\' => request()->post(\'' . $field . '\'),'.PHP_EOL;
+            $create_data_fields .= '                                \'' . $field . '\' => request()->post(\'' . str_replace("_id", "",$field) . '\'),'.PHP_EOL;
         }
 
         // Introduciendo la tabla relacionada correspondiente a los hasMany y belongsToMany
@@ -441,7 +442,7 @@ class ScaffoldMakeCommand extends Command
             $i++;
         }
 
-        $i=0;
+        $j=0;
 
         foreach ($belongs_to as $this_belong_to) {
             $has = explode(":",$this_belong_to);
@@ -454,16 +455,16 @@ class ScaffoldMakeCommand extends Command
             //$chatroom->users()->sync($request->users);
             //$unidade->users()->saveMany(User::find($request->users));
             $sync_related_table_hm .= '$'.$singular_m2m_this_model.'->'.$plural_hm_related_model.'()->saveMany('.$has[1].'::find($request->'.$plural_hm_related_model.'));'.PHP_EOL;
-            $compact_related_table_create .= ($i==0)?'\''.$plural_hm_related_model.'\'':', \''.$plural_hm_related_model.'\'';
+            $compact_related_table_create .= ($j==0)?'\''.$plural_hm_related_model.'\'':', \''.$plural_hm_related_model.'\'';
             $compact_related_table_edit .= ', \''.$plural_hm_related_model.'\'';
             $dummy_related_class .= "use App"."\\"."Models"."\\".$has[1].";".PHP_EOL;
-            $i++;
+            $j++;
         }
 
         $related_table_m2m_all = "";
         $sync_related_table_m2m = "";
 
-        $i=0;
+        $k=0;
 
         foreach ($belongs_to_many as $this_many_to_many) {
             $has = explode(":",$this_many_to_many);
@@ -473,13 +474,20 @@ class ScaffoldMakeCommand extends Command
             $related_table_m2m_all .= '$'.Str::plural(Str::lower($has[2])).' = '.$has[2].'::all();'.PHP_EOL;
             //$chatroom->users()->sync($request->users);
             $sync_related_table_m2m .= '$'.$singular_m2m_this_model.'->'.$plural_m2m_related_model.'()->sync($request->'.$plural_m2m_related_model.');';
-            $compact_related_table_create .= ($i==0)?'\''.$plural_m2m_related_model.'\'':', \''.$plural_m2m_related_model.'\'';
+            $compact_related_table_create .= ($k==0)?'\''.$plural_m2m_related_model.'\'':', \''.$plural_m2m_related_model.'\'';
             $compact_related_table_edit .= ', \''.$plural_m2m_related_model.'\'';
             $dummy_related_class .= "use App"."\\"."Models"."\\".$has[2].";".PHP_EOL;
-            $i++;
+            $k++;
         }
 
         $compact_related_table_create .= ")";
+
+        // Si es hasMany o belongtoMany o belongsTo dejar como esta el $compact_related_table_create
+        // caso contrario dejar en blanco
+
+        if ($i+$j+$k == 0) {
+            $compact_related_table_create = "";
+        }
 
         // taking scaffold stub.
         $source = file_get_contents(__DIR__ . '/stubs/controller.scaffold.stub');
@@ -650,18 +658,45 @@ class ScaffoldMakeCommand extends Command
         foreach ($array_fields as $field) {
             $only_field = explode(":",$field);
             if (isset($only_field[1]) && isset($only_field[2]) && $only_field[0] == "belongsTo") {
-                $insertar .= '"'.Str::lower($only_field[2]).'",';
+                $insertar .= '"'.Str::lower($only_field[2]).'_id",';
             } else {
                 $insertar .= '"'.$only_field[0].'",';
             }
         }
 
-        $insertar = PHP_EOL.'    protected $table = \''.Str::lower($singular_plural_class[1]).'\';'.PHP_EOL.PHP_EOL.'    protected $fillable = ['.rtrim($insertar,",").'];';
+        $insertar = PHP_EOL.'    protected $table = \''.Str::snake($singular_plural_class[1]).'\';'.PHP_EOL.PHP_EOL.'    protected $fillable = ['.rtrim($insertar,",").'];';
+
+        $insertar_externo = "";
 
         foreach($belongs_to as $key => $val) {
             $nombre = explode(":",$val);
+            $clase_externa_b2 = $nombre[1];
             $insertar .= PHP_EOL.PHP_EOL.'    public function '.Str::plural(strtolower($nombre[1])).'() {'.PHP_EOL;
-            $insertar .= '        return $this->belongsTo('.$nombre[1].'::class);'.PHP_EOL.'    }';
+            $insertar .= '        return $this->belongsTo('.$clase_externa_b2.'::class);'.PHP_EOL.'    }';
+
+            //Insertar en Modelo Externo
+
+            $ruta_model_externo = $dir . '/' . $clase_externa_b2 . '.php';
+
+            $insertar_externo .= PHP_EOL."    //Relacion con: ".$singular_plural_class[0].PHP_EOL;
+            $insertar_externo .= PHP_EOL.'    public function '.Str::lower($singular_plural_class[1]).'(): HasMany {'.PHP_EOL;
+            $insertar_externo .= '        return $this->hasMany('.$singular_plural_class[0].'::class);'.PHP_EOL.'    }';
+
+            $g = fopen($ruta_model_externo, 'r+');
+
+            $contenido_externo = file_get_contents($ruta_model_externo);
+
+            $last_mustache_pos = strrpos($contenido_externo, '}', -1) - 1;
+
+            $contenido_externo = substr($contenido_externo,0,$last_mustache_pos).PHP_EOL.$insertar_externo.PHP_EOL."}";
+
+            $eloquentHasMany = "use Illuminate\Database\Eloquent\Relations\HasMany;";
+
+            $partes = explode("\nclass", $contenido_externo);
+
+            $contenido_externo = $partes[0].$eloquentHasMany.PHP_EOL.PHP_EOL."class".$partes[1];
+
+            fwrite($g, $contenido_externo);
         }
 
         //class Driver{public function cars(){return $this->belongsToMany(Car::class);}}
@@ -761,12 +796,15 @@ class ScaffoldMakeCommand extends Command
 
         $contenido = file_get_contents($ruta_table);
 
-        $pattern = '/App\\\Models\\\[A-Z][a-z]+/';
+        //$pattern = '/App\\\Models\\\[A-Z][a-z]+/';
+        $pattern = '/App\\\Models\\\([A-Z][a-z]+)+/';
         $replacement = 'App\\Models\\'.$singular_plural_class[0];
 
         $contenido = preg_replace($pattern, $replacement, $contenido);
 
-        $pattern = '/[A-Z][a-z]+::query/';
+        //$pattern = '/[A-Z][a-z]+::query/';
+        $pattern = '/([A-Z][a-z]+)+::query/';
+
         $replacement = $singular_plural_class[0]."::query";
 
         $contenido = preg_replace($pattern, $replacement, $contenido);
@@ -896,7 +934,7 @@ class ScaffoldMakeCommand extends Command
                     $insertar .= '            \''.$only_field[0].'\' => [\'required\', \''.$tipo_dato.'\'],'.PHP_EOL;
                 }
             } elseif ($only_field[0] != "hasMany" && $only_field[0] != "belongsToMany") {
-                $insertar .= '            \''.$only_field[2].'\' => [\'required\'],'.PHP_EOL;
+                $insertar .= '            \''.Str::lower($only_field[2]).'\' => [\'required\'],'.PHP_EOL;
             }
         }
 
