@@ -71,6 +71,9 @@ class ScaffoldMakeCommand extends Command
         $array_fields = array_diff($array_fields, $belongs_to);
         $array_fields = array_diff($array_fields, $belongs_to_many);
 
+        $enum_rule = "";
+        $enum_rule_item = ""; // enum rules items
+
         foreach(array_reverse($array_fields) as $field) {
             $split_content = explode('$table->id();', $contenido);
             $column = explode(":", $field);
@@ -94,10 +97,29 @@ class ScaffoldMakeCommand extends Command
                     }
                     break;
                 case 4:
-                    if ($column[2]=="") {
-                        $insertar='            $table->'.$column[1].'(\'' . $column[0] . '\')->default('.$column[3].');';
+                    if ($column[1]=="enum") {
+                        $split_enum = explode(".",$column[3]);
+
+                        $enum_rule = "use Illuminate\Validation\Rules\Enum;\n";
+
+                        $enum_rule_item .= "\nenum ".Str::ucfirst($column[0]).": string\n{\n";
+
+                        foreach ($split_enum as $item) {
+                            $enum_rule_item .= "    case ".$item." = '".$item."';\n";
+                        }
+
+                        $enum_rule_item .= "}\n";
+
+                        $array_enum = "['".implode("','", $split_enum)."']";
+
+                        $insertar='            $table->'.$column[1].'(\'' . $column[0] . '\','.$array_enum.');';
+
                     } else {
-                        $insertar='            $table->'.$column[1].'(\'' . $column[0] . '\', '.$column[2].')->default('.$column[3].');';
+                        if ($column[2]=="") {
+                            $insertar='            $table->'.$column[1].'(\'' . $column[0] . '\')->default('.$column[3].');';
+                        } else {
+                            $insertar='            $table->'.$column[1].'(\'' . $column[0] . '\', '.$column[2].')->default('.$column[3].');';
+                        }
                     }
                     break;
                 case 3:
@@ -213,7 +235,7 @@ class ScaffoldMakeCommand extends Command
 
         $this->insertTableCode(isset($paginacion) ? $paginacion : "25");
 
-        $this->insertRequestCode();
+        $this->insertRequestCode($enum_rule, $enum_rule_item);
 
         $this->insertInMenu();
 
@@ -612,6 +634,10 @@ class ScaffoldMakeCommand extends Command
                             }
                         } elseif ($column[1] == 'float'){
                             $insertar = '            \''.$column[0].'\' => $this->faker->randomFloat(NULL, 1, '.(isset($column[3])?$column[3]:"10").'),';
+                        } elseif ($column[1] == 'enum'){
+                            $split_enum = explode(".",$column[3]);
+                            $array_enum = "['".implode("','", $split_enum)."']";
+                            $insertar = '            \''.$column[0].'\' => $this->faker->randomElement('.$array_enum.'),';
                         }
                         else {
                             $insertar = '            \''.$column[0].'\' => $this->faker->' . $basic_fake_value_array[$column[1]] .',';
@@ -860,7 +886,7 @@ class ScaffoldMakeCommand extends Command
         fwrite($f, $contenido);
     }
 
-    protected function insertRequestCode() {
+    protected function insertRequestCode($enum_rule = "", $enum_rule_item = "") {
         $singular_plural_class = $this->explodeclass();
 
         $requestName = Str::studly(class_basename($singular_plural_class[0]));
@@ -868,6 +894,7 @@ class ScaffoldMakeCommand extends Command
         $dir = "app/Http/Requests";
 
         $insertar = "";
+        $insertar_enums = "";
 
         $ruta_store_request = $dir . '/Store' . $requestName . 'Request.php';
 
@@ -875,24 +902,54 @@ class ScaffoldMakeCommand extends Command
 
         $contenido = file_get_contents($ruta_store_request);
 
+        if ($enum_rule != "") {
+            $split_content = explode("use Illuminate\Foundation\Http\FormRequest;", $contenido);
+            $insertar_enums .= "use Illuminate\Foundation\Http\FormRequest;".PHP_EOL;
+            $insertar_enums .= $enum_rule.PHP_EOL.$enum_rule_item.PHP_EOL;
+
+            $contenido=$split_content[0].PHP_EOL.$insertar_enums.$split_content[1];
+        }
+
         $split_content = explode("//", $contenido);
 
         $array_fields = array_reverse($this->argument('fields'));
 
         foreach ($array_fields as $field) {
             $only_field = explode(":",$field);
+
             $numerico = ["bigInteger","bigSerial","serial","float4","float8","int","int2","int4","int8","integer","decimal"];
-            $tipo_dato = isset($only_field[1])?(in_array($only_field[1],$numerico)?"integer":"string"):"string";
+
+            $tipo_dato = isset($only_field[1])?(in_array($only_field[1],$numerico)?"integer":$only_field[1]):"string";
+
             $longitud_dato = isset($only_field[2])?$only_field[2]:"255";
-            if ($only_field[0] != "belongsTo" && $only_field[0] != "hasMany" && $only_field[0] != "belongsToMany") {
-                if ($tipo_dato=="string") {
-                    $insertar .= '            \''.$only_field[0].'\' => [\'required\', \''.$tipo_dato.'\', \'max:'.$longitud_dato.'\'],'.PHP_EOL;
-                } else {
-                    $insertar .= '            \''.$only_field[0].'\' => [\'required\', \''.$tipo_dato.'\'],'.PHP_EOL;
-                }
-            } elseif ($only_field[0] != "hasMany" && $only_field[0] != "belongsToMany") {
-                $insertar .= '            \''.Str::lower($only_field[2]).'\' => [\'required\'],'.PHP_EOL;
+
+            switch ($tipo_dato) {
+                case 'integer':
+                    if ($only_field[0] != "belongsTo" && $only_field[0] != "hasMany" && $only_field[0] != "belongsToMany") {
+                            $insertar .= '            \''.$only_field[0].'\' => [\'required\', \''.$tipo_dato.'\'],'.PHP_EOL;
+                    } elseif ($only_field[0] != "hasMany" && $only_field[0] != "belongsToMany") {
+                        $insertar .= '            \''.Str::lower($only_field[2]).'\' => [\'required\'],'.PHP_EOL;
+                    }
+                    break;
+
+                case 'string':
+                    if ($only_field[0] != "belongsTo" && $only_field[0] != "hasMany" && $only_field[0] != "belongsToMany") {
+                        $insertar .= '            \''.$only_field[0].'\' => [\'required\', \''.$tipo_dato.'\', \'max:'.$longitud_dato.'\'],'.PHP_EOL;
+                    } elseif ($only_field[0] != "hasMany" && $only_field[0] != "belongsToMany") {
+                        $insertar .= '            \''.Str::lower($only_field[2]).'\' => [\'required\'],'.PHP_EOL;
+                    }
+                    break;
+
+                case 'enum':
+                    $insertar .= '            \''.$only_field[0].'\' => [\'required\', new Enum('.Str::ucfirst($only_field[0]).'::class)],'.PHP_EOL;
+                    break;
+
+                default:
+                    # code...
+                    break;
             }
+
+
 
         }
 
@@ -914,41 +971,72 @@ class ScaffoldMakeCommand extends Command
 
         $ruta_update_request = $dir . '/Update' . $requestName . 'Request.php';
 
-        $f=fopen($ruta_update_request, 'r+');
+        $insertar = "";
+        $insertar_enums = "";
 
-        $contenido = file_get_contents($ruta_update_request);
+        $g=fopen($ruta_update_request, 'r+');
 
-        $split_content = explode("//", $contenido);
+        $contenido2 = file_get_contents($ruta_update_request);
+
+        if ($enum_rule != "") {
+            $split_content = explode("use Illuminate\Foundation\Http\FormRequest;", $contenido2);
+            $insertar_enums .= "use Illuminate\Foundation\Http\FormRequest;".PHP_EOL;
+            $insertar_enums .= $enum_rule.PHP_EOL.$enum_rule_item.PHP_EOL;
+
+            $contenido2=$split_content[0].PHP_EOL.$insertar_enums.$split_content[1];
+        }
+
+        $split_content = explode("//", $contenido2);
 
         $array_fields = array_reverse($this->argument('fields'));
 
         foreach ($array_fields as $field) {
             $only_field = explode(":",$field);
+
             $numerico = ["bigInteger","bigSerial","serial","float4","float8","int","int2","int4","int8","integer","decimal"];
-            $tipo_dato = isset($only_field[1])?(in_array($only_field[1],$numerico)?"integer":"string"):"string";
+
+            $tipo_dato = isset($only_field[1])?(in_array($only_field[1],$numerico)?"integer":$only_field[1]):"string";
+
             $longitud_dato = isset($only_field[2])?$only_field[2]:"255";
-            if ($only_field[0] != "belongsTo" && $only_field[0] != "hasMany" && $only_field[0] != "belongsToMany") {
-                if ($tipo_dato=="string") {
-                    $insertar .= '            \''.$only_field[0].'\' => [\'required\', \''.$tipo_dato.'\', \'max:'.$longitud_dato.'\'],'.PHP_EOL;
-                } else {
-                    $insertar .= '            \''.$only_field[0].'\' => [\'required\', \''.$tipo_dato.'\'],'.PHP_EOL;
-                }
-            } elseif ($only_field[0] != "hasMany" && $only_field[0] != "belongsToMany") {
-                $insertar .= '            \''.Str::lower($only_field[2]).'\' => [\'required\'],'.PHP_EOL;
+
+            switch ($tipo_dato) {
+                case 'integer':
+                    if ($only_field[0] != "belongsTo" && $only_field[0] != "hasMany" && $only_field[0] != "belongsToMany") {
+                            $insertar .= '            \''.$only_field[0].'\' => [\'required\', \''.$tipo_dato.'\'],'.PHP_EOL;
+                    } elseif ($only_field[0] != "hasMany" && $only_field[0] != "belongsToMany") {
+                        $insertar .= '            \''.Str::lower($only_field[2]).'\' => [\'required\'],'.PHP_EOL;
+                    }
+                    break;
+
+                case 'string':
+                    if ($only_field[0] != "belongsTo" && $only_field[0] != "hasMany" && $only_field[0] != "belongsToMany") {
+                        $insertar .= '            \''.$only_field[0].'\' => [\'required\', \''.$tipo_dato.'\', \'max:'.$longitud_dato.'\'],'.PHP_EOL;
+                    } elseif ($only_field[0] != "hasMany" && $only_field[0] != "belongsToMany") {
+                        $insertar .= '            \''.Str::lower($only_field[2]).'\' => [\'required\'],'.PHP_EOL;
+                    }
+                    break;
+
+                case 'enum':
+                    $insertar .= '            \''.$only_field[0].'\' => [\'required\', new Enum('.Str::ucfirst($only_field[0]).'::class)],'.PHP_EOL;
+                    break;
+
+                default:
+                    # code...
+                    break;
             }
         }
 
-        $contenido=$split_content[0].PHP_EOL.$insertar.$split_content[1];
+        $contenido2=$split_content[0].PHP_EOL.$insertar.$split_content[1];
 
-        $split_content = explode("use Illuminate\Foundation\Http\FormRequest;", $contenido);
+        $split_content = explode("use Illuminate\Foundation\Http\FormRequest;", $contenido2);
         $insertar = "use Illuminate\Foundation\Http\FormRequest;".PHP_EOL."use Illuminate\Support\Facades\Gate;";
-        $contenido=$split_content[0].$insertar.PHP_EOL.$split_content[1];
+        $contenido2=$split_content[0].$insertar.PHP_EOL.$split_content[1];
 
-        $split_content = explode("return false;", $contenido);
+        $split_content = explode("return false;", $contenido2);
         $insertar = "return Gate::allows('".Str::lower($singular_plural_class[0])."_create');";
-        $contenido=$split_content[0].$insertar.PHP_EOL.$split_content[1];
+        $contenido2=$split_content[0].$insertar.PHP_EOL.$split_content[1];
 
-        fwrite($f, $contenido);
+        fwrite($g, $contenido2);
     }
 
     function setPermissions() {
